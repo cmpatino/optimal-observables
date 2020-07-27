@@ -128,5 +128,11 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# Data
+# Data and Images
 mg5_data/
+*.png
+
+# Cache files
+.vscode
+
+
