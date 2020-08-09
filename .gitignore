@@ -135,4 +135,9 @@ mg5_data/
 # Cache files
 .vscode
 
+# Notebooks
+notebooks/
 
+# Docker byproducts
+hep-docker/*.dat
+hep-docker/*.py
