@@ -1,3 +1,4 @@
+from processing import event_selection
 from typing import List
 
 
@@ -31,7 +32,10 @@ def n_particles(events, key: str) -> List[int]:
     :return: Number of particles in each event.
     :rtype: List[int]
     """
+    particle = key.split(".")[0].lower()
+    mask = getattr(event_selection, f"select_{particle}")(events)
     particle_count = []
-    for event in events[key].array():
+    key_events = events[key].array()[mask]
+    for event in key_events:
         particle_count.append(len(event))
     return particle_count
