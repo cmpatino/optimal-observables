@@ -130,7 +130,6 @@ dmypy.json
 
 # Data and Images
 mg5_data/
-*.png
 
 # Cache files
 .vscode
@@ -141,3 +140,4 @@ notebooks/
 # Docker byproducts
 hep-docker/*.dat
 hep-docker/*.py
+hep-docker/generated_events/
