@@ -65,3 +65,5 @@ RUN git clone https://github.com/delphes/delphes.git /opt/MG5_aMC_v2_7_3/Delphes
 RUN curl -sL https://feynrules.irmp.ucl.ac.be/raw-attachment/wiki/dim6top/dim6top_LO_UFO.tar.gz | tar -C /opt/MG5_aMC_v2_7_3/models -zxf -
 
 RUN echo alias mg5_aMC=\"/opt/MG5_aMC_v2_7_3/bin/mg5_aMC\" >> ~/.bash_aliases
+
+RUN mkdir /generated_events
