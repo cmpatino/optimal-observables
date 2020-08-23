@@ -60,114 +60,106 @@ def hist_var(q: List[float], label: str) -> Figure:
     return fig
 
 
-def ratio_hist(q1: List[float], q2: List[float], bins: int,
-               hist_range: Tuple[int], label: str,
-               hist1_label: str, hist2_label: str) -> Figure:
-    """Generate histogram with ratio pad.
+def ratio_hist(processes_q: List[List[float]], hist_labels: List[str],
+               reference_label: str, n_bins: int, hist_range: Tuple[int, int],
+               title: str, figsize=(15, 8)) -> Figure:
+    """Generate histrograms with ratio pad
 
-    :param q1: Quantity value per event.
-    :type q1: List[float]
-    :param q2: Quantity value per event.
-    :type q2: List[float]
-    :param bins: Number of bins for histogram.
-    :type bins: int
-    :param hist_range: Range for histogram bins.
+    :param processes_q: Quantity for each event and process
+    :type processes_q: List[List[float]]
+    :param hist_labels: Labels for each process
+    :type hist_labels: List[str]
+    :param reference_label: Label of process taken as the denominator of ratios
+    :type reference_label: str
+    :param n_bins: Number of bins for histograms
+    :type n_bins: int
+    :param hist_range: Range for histogram bins
     :type hist_range: Tuple[int]
-    :param label: Plot title.
-    :type label: str
-    :param hist1_label: Label for q1.
-    :type hist1_label: str
-    :param hist2_label: Label for q2.
-    :type hist2_label: str
+    :param title: Plot title
+    :type title: str
+    :param figsize: Figure size for output plot
+    :type figsize: Tuple[int]
     :return: Figure with histogram and histogram ratio.
     :rtype: Figure
     """
 
-    bins1, edges1 = np.histogram(
-        q1,
-        bins=bins,
-        range=hist_range
-    )
+    p_bins = {}
+    p_edges = {}
+    p_errors = {}
+    for p, label in zip(processes_q, hist_labels):
+        bins, edges = np.histogram(
+            p,
+            bins=n_bins,
+            range=hist_range
+        )
+        p_bins[label] = bins
+        p_edges[label] = edges
+        p_errors[label] = np.sqrt(bins)
 
-    bins2, edges2 = np.histogram(
-        q2,
-        bins=bins,
-        range=hist_range
-    )
-    bin_width = edges1[1] - edges1[0]
+    bin_width = edges[1] - edges[0]
 
-    error1 = np.sqrt(bins1)
-    error2 = np.sqrt(bins2)
-    frac_error = error1/bins1 + error2/bins2
-
-    fig, (ax1, ax2) = plt.subplots(
-            nrows=2,
-            gridspec_kw={'height_ratios': [3, 1]},
+    fig, ax = plt.subplots(
+            nrows=len(processes_q),
+            ncols=1,
+            gridspec_kw={'height_ratios': [3] + [1]*(len(processes_q) - 1)},
             sharex=True,
-            figsize=(15, 8)
+            figsize=figsize
     )
 
-    ax1.bar(edges1[:-1], bins1, width=bin_width, alpha=0.6, label=hist1_label)
-    ax1.bar(
-        x=edges1[:-1],
-        bottom=bins1,
-        height=error1,
-        width=bin_width,
-        alpha=0.0,
-        color='w',
-        hatch='/',
-        label='Stat. Uncertainty'
-    )
-    ax1.bar(
-        x=edges1[:-1],
-        bottom=bins1,
-        height=-error1,
-        width=bin_width,
-        alpha=0.0,
-        color='w',
-        hatch='/'
-    )
+    legends = []
+    for label in hist_labels:
+        ax[0].bar(p_edges[label][:-1], p_bins[label], width=bin_width, alpha=0.6, label=label)
+        ax[0].bar(
+            x=p_edges[label][:-1],
+            bottom=p_bins[label],
+            height=p_errors[label],
+            width=bin_width,
+            alpha=0.0,
+            color='w',
+            hatch='/'
+        )
+        ax[0].bar(
+            x=p_edges[label][:-1],
+            bottom=p_bins[label],
+            height=-p_errors[label],
+            width=bin_width,
+            alpha=0.0,
+            color='w',
+            hatch='/'
+        )
+        legends += [label, '_', '_']
 
-    ax1.bar(edges2[:-1], bins2, width=bin_width, alpha=0.6, label=hist2_label)
-    ax1.bar(
-        x=edges2[:-1],
-        bottom=bins2,
-        height=error2,
-        width=bin_width,
-        alpha=0.0,
-        color='w',
-        hatch='/'
-    )
-    ax1.bar(
-        x=edges2[:-1],
-        bottom=bins2,
-        height=-error2,
-        width=bin_width,
-        alpha=0.0,
-        color='w',
-        hatch='/'
-    )
+    ax[0].set_ylabel("Events", fontsize=15)
+    ax[0].set_title(title, fontsize=20)
+    legends[-1] = "Stat. Uncertainty"
+    ax[0].legend(legends)
 
-    ratios = bins1/bins2
-    error_ratio = ratios * frac_error
-    ax2.bar(
-        bottom=1.0,
-        height=error_ratio,
-        x=edges1[:-1],
-        width=bin_width,
-        alpha=0.5,
-        color="blue"
-    )
-    ax2.bar(
-        bottom=1.0,
-        height=-error_ratio,
-        x=edges1[:-1],
-        width=bin_width,
-        alpha=0.5,
-        color="blue"
-    )
-    _ = ax2.scatter(edges1[:-1], ratios, marker='o', color="black")
-    ax1.legend()
-    ax1.set_title(label, fontsize=20)
-    ax1.set_ylabel("Events", fontsize=15)
-    ax2.set_ylabel(f"{hist1_label}/{hist2_label}")
+    plot_idx = 1
+    ref_bins = p_bins[reference_label]
+    ref_edges = p_edges[reference_label]
+    ref_frac_error = p_errors[reference_label]/ref_bins
+    for label in hist_labels:
+        if label == reference_label:
+            continue
+        ratios = p_bins[label]/ref_bins
+        error_ratio = ratios * (ref_frac_error + p_errors[label]/p_bins[label])
+
+        ax[plot_idx].bar(
+            bottom=1.0,
+            height=error_ratio,
+            x=ref_edges[:-1],
+            width=bin_width,
+            alpha=0.3,
+            color="blue"
+        )
+        ax[plot_idx].bar(
+            bottom=1.0,
+            height=-error_ratio,
+            x=ref_edges[:-1],
+            width=bin_width,
+            alpha=0.3,
+            color="blue"
+        )
+        ax[plot_idx].scatter(ref_edges[:-1], ratios, marker='o', color="black")
+        ax[plot_idx].set_ylabel(f"{label}/{reference_label}")
+        plot_idx += 1
