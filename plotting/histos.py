@@ -83,21 +83,6 @@ def ratio_hist(processes_q: List[List[float]], hist_labels: List[str],
     :rtype: Figure
     """
 
-    p_bins = {}
-    p_edges = {}
-    p_errors = {}
-    for p, label in zip(processes_q, hist_labels):
-        bins, edges = np.histogram(
-            p,
-            bins=n_bins,
-            range=hist_range
-        )
-        p_bins[label] = bins
-        p_edges[label] = edges
-        p_errors[label] = np.sqrt(bins)
-
-    bin_width = edges[1] - edges[0]
-
     fig, ax = plt.subplots(
             nrows=len(processes_q),
             ncols=1,
@@ -105,10 +90,30 @@ def ratio_hist(processes_q: List[List[float]], hist_labels: List[str],
             sharex=True,
             figsize=figsize
     )
-
     legends = []
+
+    p_bins = {}
+    p_edges = {}
+    p_errors = {}
+    for p, label in zip(processes_q, hist_labels):
+        bins, edges, _ = ax[0].hist(
+            x=p,
+            bins=n_bins,
+            range=hist_range,
+            fill=False,
+            label=label,
+            align='left',
+            histtype='step',
+            linewidth=4
+        )
+        p_bins[label] = bins
+        p_edges[label] = edges
+        p_errors[label] = np.sqrt(bins)
+        legends += [label]
+
+    bin_width = edges[1] - edges[0]
+
     for label in hist_labels:
-        ax[0].bar(p_edges[label][:-1], p_bins[label], width=bin_width, alpha=0.6, label=label)
         ax[0].bar(
             x=p_edges[label][:-1],
             bottom=p_bins[label],
@@ -127,7 +132,7 @@ def ratio_hist(processes_q: List[List[float]], hist_labels: List[str],
             color='w',
             hatch='/'
         )
-        legends += [label, '_', '_']
+        legends += ['_', '_']
 
     ax[0].set_ylabel("Events", fontsize=15)
     ax[0].set_title(title, fontsize=20)
