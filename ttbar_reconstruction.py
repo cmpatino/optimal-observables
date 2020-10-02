@@ -14,7 +14,20 @@ from processing import event_selection
 # m_m = 0.105658389
 
 
-def four_momentum(pt: float, phi: float, eta: float, mass: float):
+def four_momentum(pt: float, phi: float, eta: float, mass: float) -> Tuple[float]:
+    """Calculate the four-momentum for a particle.
+
+    :param pt: Transverse momentum
+    :type pt: float
+    :param phi: Phi coordinate
+    :type phi: float
+    :param eta: Pseudorapidity
+    :type eta: float
+    :param mass: Particle mass
+    :type mass: float
+    :return: Particle's four-momentum
+    :rtype: Tuple[float]
+    """
     pt = np.abs(pt)
     px = pt*np.cos(phi)
     py = pt*np.sin(phi)
@@ -24,8 +37,26 @@ def four_momentum(pt: float, phi: float, eta: float, mass: float):
 
 
 def ttbar_bjets_kinematics(event_bjets_pt: np.ndarray, event_bjets_phi: np.ndarray,
-                           event_bjets_eta: np.ndarray, event_bjets_mass: np.ndarray,
-                           idx_t: int, idx_tbar: int):
+                           event_bjets_eta: np.ndarray, event_bjets_mass: np.ndarray, idx_t: int,
+                           idx_tbar: int) -> Tuple[Tuple[float], Tuple[float], float, float]:
+    """Calculate four-momentum for two b-jets. One jet is assumed to come from the
+    top quark and the other from the anti-top quark.
+
+    :param event_bjets_pt: Transverse momentum of two b-jets
+    :type event_bjets_pt: np.ndarray
+    :param event_bjets_phi: Phi angles for two b-jets
+    :type event_bjets_phi: np.ndarray
+    :param event_bjets_eta: Pseudorapidity of two b-jets
+    :type event_bjets_eta: np.ndarray
+    :param event_bjets_mass: Mass of two b-jets
+    :type event_bjets_mass: np.ndarray
+    :param idx_t: Index of b-jet assumed to be from the top quark
+    :type idx_t: int
+    :param idx_tbar: Index of b-jet assumed to be from the anti-top quark
+    :type idx_tbar: int
+    :return: Four-momenta and masses for the two b-jets assigned to each quark.
+    :rtype: Tuple[Tuple[float], Tuple[float], float, float]
+    """
     pt_b_t = event_bjets_pt[idx_t]
     pt_b_tbar = event_bjets_pt[idx_tbar]
     phi_b_t = event_bjets_phi[idx_t]
@@ -41,7 +72,23 @@ def ttbar_bjets_kinematics(event_bjets_pt: np.ndarray, event_bjets_phi: np.ndarr
 
 def ttbar_leptons_kinematics(event_ls_pt: List[float], event_ls_phi: List[float],
                              event_ls_eta: List[float], event_ls_charge: List[float],
-                             m_ls: List[float]):
+                             m_ls: List[float]) -> Tuple[Tuple[float], Tuple[float], float, float]:
+    """Calculate four-momentum for two leptons. The leptons are assigned to a
+    specific top quark using their charge.
+
+    :param event_ls_pt: Leptons' transverse momenta
+    :type event_ls_pt: List[float]
+    :param event_ls_phi: Lepton's phi angle
+    :type event_ls_phi: List[float]
+    :param event_ls_eta: Leptons' Pseudorapidity
+    :type event_ls_eta: List[float]
+    :param event_ls_charge: Leptons' charge
+    :type event_ls_charge: List[float]
+    :param m_ls: Leptons' masses
+    :type m_ls: List[float]
+    :return: Four-momenta and masses for leptons assigned to each quark.
+    :rtype: Tuple[Tuple[float], Tuple[float], float, float]
+    """
     if event_ls_charge[0] == 1:
         l_idx_t = 0
         l_idx_tbar = 1
@@ -64,7 +111,31 @@ def ttbar_leptons_kinematics(event_ls_pt: List[float], event_ls_phi: List[float]
 
 
 def calculate_neutrino_py(eta: float, m_b: float, p_b: Tuple[float],
-                          m_l: float, p_l: Tuple[float], m_t: float, m_w=80.4):
+                          m_l: float, p_l: Tuple[float], m_t: float,
+                          m_w=80.4) -> Tuple[np.ndarray, float, float]:
+    """Calculate possible solutions for the py momentum of a neutrino in the event.
+    The solutions are calculated solving a second order polynomial. The b-jet and
+    lepton used in the calculation are the ones that result of the same top quark
+    decay as the neutrino.
+
+    :param eta: Assummed pseudorapidity for the neutrino.
+    :type eta: float
+    :param m_b: Mass of the b-jet.
+    :type m_b: float
+    :param p_b: Four-momentum of the b-jet.
+    :type p_b: Tuple[float]
+    :param m_l: Lepton's mass.
+    :type m_l: float
+    :param p_l: Lepton's four-momentum.
+    :type p_l: Tuple[float]
+    :param m_t: Assumed top quark mass.
+    :type m_t: float
+    :param m_w: Assumed W boson mass., defaults to 80.4
+    :type m_w: float, optional
+    :return: Possible solutions for py. eps and kappa are quantities required
+             for calculating the neutrino's px.
+    :rtype: Tuple[np.ndarray, float, float]
+    """
     alpha_1 = (m_t**2 - m_b**2 - m_w**2)
     alpha_2 = (m_w**2 - m_l**2)/2
 
@@ -90,20 +161,74 @@ def calculate_neutrino_py(eta: float, m_b: float, p_b: Tuple[float],
     return roots, eps, kappa
 
 
-def calculate_neutrino_px(neutrino_py: np.ndarray, eps: float, kappa: float):
+def calculate_neutrino_px(neutrino_py: np.ndarray, eps: float, kappa: float) -> np.ndarray:
+    """Calculate neutrino's px.""
+
+    :param neutrino_py: Potential solutions for neutrino's py
+    :type neutrino_py: np.ndarray
+    :param eps: Variable encapsulating lepton and b-jet kinematics used for py solutions.
+    :type eps: float
+    :param kappa: Variable encapsulating lepton and b-jet kinematics used for py solutions.
+    :type kappa: float
+    :return: Potential solutions for neutrino's px
+    :rtype: np.ndarray
+    """
     return kappa*neutrino_py + eps
 
 
-def solution_weight(met_x: float, met_y: float, neutrino_px: float, neutrino_py: float):
-    weight_x = np.exp(-((met_x - neutrino_px)/(2*6.85))**2)
-    weight_y = np.exp(-((met_y - neutrino_py)/(2*7.43))**2)
+def solution_weight(met_x: float, met_y: float, neutrino_px: float, neutrino_py: float) -> float:
+    """Calculate the weight of the solution using potential neutrino's momentum solution
+    and observed missing ET.
+
+    :param met_x: x component of Missing ET.
+    :type met_x: float
+    :param met_y: x component of Missing ET.
+    :type met_y: float
+    :param neutrino_px: Potential solution of neutrino's px.
+    :type neutrino_px: float
+    :param neutrino_py: Potential solution of neutrino's py.'
+    :type neutrino_py: float
+    :return: Solution's weights.
+    :rtype: float
+    """
+    # TODO: Setup correctly the unclustered calorimeter energy observed in the event.
+    unclustered_energy = 1
+    weight_x = np.exp(-((met_x - neutrino_px)/(2*6.85*unclustered_energy))**2)
+    weight_y = np.exp(-((met_y - neutrino_py)/(2*7.43*unclustered_energy))**2)
     return weight_x*weight_y
 
 
 def total_neutrino_momentum(nu_eta_t: float, m_b_t: float, p_b_t: Tuple[float], m_l_t: float,
                             p_l_t: Tuple[float], nu_eta_tbar: float, m_b_tbar: float,
                             p_b_tbar: Tuple[float], m_l_tbar: float, p_l_tbar: Tuple[float],
-                            m_t_val: float):
+                            m_t_val: float) -> Tuple[np.ndarray, np.ndarray]:
+    """Calculate total momentum of the two neutrinos in the x and y components.
+
+    :param nu_eta_t: Pseudorapidity of neutrino assigned to top quark.
+    :type nu_eta_t: float
+    :param m_b_t: Mass of b-jet assigned to top quark.
+    :type m_b_t: float
+    :param p_b_t: Four-momentum of b-jet assigned to top quark.
+    :type p_b_t: Tuple[float]
+    :param m_l_t: Mass of lepton assigned to top quark.
+    :type m_l_t: float
+    :param p_l_t: Four-momentum of lepton assigned to top quark.
+    :type p_l_t: Tuple[float]
+    :param nu_eta_tbar: Pseudorapidity of neutrino assigned to anti-top quark.
+    :type nu_eta_tbar: float
+    :param m_b_tbar: Mass of b-jet assigned to anti-top quark.
+    :type m_b_tbar: float
+    :param p_b_tbar: Four-momentum of b-jet assigned to anti-top quark.
+    :type p_b_tbar: Tuple[float]
+    :param m_l_tbar: Mass of lepton assigned to anti-top quark.
+    :type m_l_tbar: float
+    :param p_l_tbar: Four-momentum of lepton assigned to anti-top quark.
+    :type p_l_tbar: Tuple[float]
+    :param m_t_val: Assumed mass for top quark.
+    :type m_t_val: float
+    :return: x and y components of total neutrino momentum in the event.
+    :rtype: Tuple[np.ndarray, np.ndarray]
+    """
     nu_t_py, eps, kappa = calculate_neutrino_py(
         nu_eta_t,
         m_b_t,
@@ -135,7 +260,30 @@ def total_neutrino_momentum(nu_eta_t: float, m_b_t: float, p_b_t: Tuple[float], 
 
 def lepton_kinematics(electron_pt: np.ndarray, electron_phi: np.ndarray, electron_eta: np.ndarray,
                       electron_charge: np.ndarray, muon_pt: np.ndarray, muon_phi: np.ndarray,
-                      muon_eta: np.ndarray, muon_charge: np.ndarray):
+                      muon_eta: np.ndarray, muon_charge: np.ndarray
+                      ) -> Tuple[Tuple[float], Tuple[float], float, float]:
+    """Calculate lepton kinematics according to the types of leptons present in the event.
+
+    :param electron_pt: Transverse momenta of electrons in the event.
+    :type electron_pt: np.ndarray
+    :param electron_phi: Phi of electrons in the event.
+    :type electron_phi: np.ndarray
+    :param electron_eta: Pseudorapidities of electrons in the event.
+    :type electron_eta: np.ndarray
+    :param electron_charge: Charges of electrons in the event.
+    :type electron_charge: np.ndarray
+    :param muon_pt: Transverse momenta of muons in the event.
+    :type muon_pt: np.ndarray
+    :param muon_phi: Phi of muons in the event.
+    :type muon_phi: np.ndarray
+    :param muon_eta: Pseudorapidities of muons in the event.
+    :type muon_eta: np.ndarray
+    :param muon_charge: Charges of muons in the event.
+    :type muon_charge: np.ndarray
+    :raises ValueError: The number of leptons in the event is greater than two.
+    :return: Four-momenta and masses for leptons assigned to top and anti-top quarks.
+    :rtype: Tuple[Tuple[float], Tuple[float], float, float]
+    """
     if len(electron_pt) + len(muon_pt) < 2:
         return None, None, None, None
     n_electrons = len(electron_pt)
@@ -238,6 +386,7 @@ if __name__ == "__main__":
                 continue
             bjets_combinations = list(combinations(range(len(bjets_mass[idx])), 2))
             for idx_t, idx_tbar in bjets_combinations:
+                # TODO: Smear jet pt.
                 p_b_t, p_b_tbar, m_b_t, m_b_tbar = ttbar_bjets_kinematics(
                     bjets_pt[idx],
                     bjets_phi[idx],
