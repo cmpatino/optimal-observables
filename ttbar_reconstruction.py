@@ -176,7 +176,8 @@ def calculate_neutrino_px(neutrino_py: np.ndarray, eps: float, kappa: float) -> 
     return kappa*neutrino_py + eps
 
 
-def solution_weight(met_x: float, met_y: float, neutrino_px: float, neutrino_py: float) -> float:
+def solution_weight(met_x: float, met_y: float, neutrino_px: float, neutrino_py: float,
+                    met_resolution: float) -> float:
     """Calculate the weight of the solution using potential neutrino's momentum solution
     and observed missing ET.
 
@@ -188,13 +189,13 @@ def solution_weight(met_x: float, met_y: float, neutrino_px: float, neutrino_py:
     :type neutrino_px: float
     :param neutrino_py: Potential solution of neutrino's py.'
     :type neutrino_py: float
+    :param met_resolution: Resolution of MET measurement.
+    :type met_resolution: float
     :return: Solution's weights.
     :rtype: float
     """
-    # TODO: Setup correctly the unclustered calorimeter energy observed in the event.
-    unclustered_energy = 1
-    weight_x = np.exp(-((met_x - neutrino_px)/(2*6.85*unclustered_energy))**2)
-    weight_y = np.exp(-((met_y - neutrino_py)/(2*7.43*unclustered_energy))**2)
+    weight_x = np.exp(-(met_x - neutrino_px)**2/(2*met_resolution**2))
+    weight_y = np.exp(-(met_y - neutrino_py)**2/(2*met_resolution**2))
     return weight_x*weight_y
 
 
@@ -386,35 +387,41 @@ if __name__ == "__main__":
                 continue
             bjets_combinations = list(combinations(range(len(bjets_mass[idx])), 2))
             for idx_t, idx_tbar in bjets_combinations:
-                # TODO: Smear jet pt.
-                p_b_t, p_b_tbar, m_b_t, m_b_tbar = ttbar_bjets_kinematics(
+                smeared_jets_pt = np.random.normal(
                     bjets_pt[idx],
-                    bjets_phi[idx],
-                    bjets_eta[idx],
-                    bjets_mass[idx],
-                    idx_t,
-                    idx_tbar
+                    bjets_pt[idx]*0.08,
+                    (5, len(bjets_pt[idx]))
                 )
-
-                met = sm_events["MissingET.MET"].array()[idx]
-                met_phi = sm_events["MissingET.Phi"].array()[idx]
-                met_x = (met*np.cos(met_phi))[0]
-                met_y = (met*np.sin(met_phi))[0]
-
-                eta_range = np.linspace(-5, 5, 51)
-                eta_grid = np.array(np.meshgrid(eta_range, eta_range)).T.reshape(-1, 2)
-                for nu_eta_t, nu_eta_tbar in eta_grid:
-                    total_nu_px, total_nu_py = total_neutrino_momentum(
-                        nu_eta_t, m_b_t, p_b_t, m_l_t, p_l_t,
-                        nu_eta_tbar, m_b_tbar, p_b_tbar, m_l_tbar,  p_l_tbar, m_t_val
+                for bjets_pt_idx in smeared_jets_pt:
+                    p_b_t, p_b_tbar, m_b_t, m_b_tbar = ttbar_bjets_kinematics(
+                        bjets_pt_idx,
+                        bjets_phi[idx],
+                        bjets_eta[idx],
+                        bjets_mass[idx],
+                        idx_t,
+                        idx_tbar
                     )
-                    if total_nu_px is None:
-                        continue
 
-                    for nu_px, nu_py in zip(total_nu_px, total_nu_py):
-                        if np.iscomplex(nu_px) or np.iscomplex(nu_py):
+                    met = sm_events["MissingET.MET"].array()[idx]
+                    met_phi = sm_events["MissingET.Phi"].array()[idx]
+                    met_resolution = 20 + met/20
+                    met_x = (met * np.cos(met_phi))[0]
+                    met_y = (met * np.sin(met_phi))[0]
+
+                    eta_range = np.linspace(-5, 5, 51)
+                    eta_grid = np.array(np.meshgrid(eta_range, eta_range)).T.reshape(-1, 2)
+                    for nu_eta_t, nu_eta_tbar in eta_grid:
+                        total_nu_px, total_nu_py = total_neutrino_momentum(
+                            nu_eta_t, m_b_t, p_b_t, m_l_t, p_l_t,
+                            nu_eta_tbar, m_b_tbar, p_b_tbar, m_l_tbar,  p_l_tbar, m_t_val
+                        )
+                        if total_nu_px is None:
                             continue
-                        weight = solution_weight(met_x, met_y, nu_px, nu_py)
-                        if weight > best_weight:
-                            best_weight = weight
+
+                        for nu_px, nu_py in zip(total_nu_px, total_nu_py):
+                            if np.iscomplex(nu_px) or np.iscomplex(nu_py):
+                                continue
+                            weight = solution_weight(met_x, met_y, nu_px, nu_py, met_resolution)
+                            if weight > best_weight:
+                                best_weight = weight
         best_weights.append(best_weight)
