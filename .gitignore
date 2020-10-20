@@ -140,4 +140,4 @@ notebooks/
 # Docker byproducts
 hep-docker/*.dat
 hep-docker/*.py
-hep-docker/generated_events/
+hep-docker/generated-data/
