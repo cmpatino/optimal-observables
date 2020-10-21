@@ -1,0 +1,15 @@
+import model dim6top_LO_UFO
+generate p p > t t~
+output ctG_sweep
+launch ctG_sweep -n run_ctG0 -m
+4
+shower=Pythia8
+detector=Delphes
+madspin=ON
+set ctG 0.0
+launch -n run_ctG1 -m
+4
+shower=Pythia8
+detector=Delphes
+madspin=ON
+set ctG 1.0
