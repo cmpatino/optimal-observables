@@ -1,9 +1,9 @@
 import uproot
+import ray
 import numpy as np
 
 from typing import List, Tuple
 from itertools import combinations
-from tqdm import tqdm
 
 from processing import event_selection
 
@@ -342,6 +342,63 @@ def lepton_kinematics(electron_pt: np.ndarray, electron_phi: np.ndarray, electro
         )
 
 
+@ray.remote
+def reconstruct_event(bjets_mass, bjets_pt, bjets_phi, bjets_eta,
+                      electron_pt, electron_phi, electron_eta, electron_charge,
+                      muon_pt, muon_phi, muon_eta, muon_charge,
+                      met, met_phi, idx):
+    print(f"Event {idx}")
+    best_weight = -1
+    for m_t_val in np.linspace(171, 174, 7):
+        p_l_t, p_l_tbar, m_l_t, m_l_tbar = lepton_kinematics(
+            electron_pt, electron_phi, electron_eta, electron_charge,
+            muon_pt, muon_phi, muon_eta, muon_charge
+        )
+        if p_l_t is None:
+            continue
+
+        if len(bjets_mass) < 2:
+            continue
+        bjets_combinations = list(combinations(range(len(bjets_mass)), 2))
+        for idx_t, idx_tbar in bjets_combinations:
+            smeared_jets_pt = np.random.normal(
+                bjets_pt,
+                bjets_pt * 0.08,
+                (5, len(bjets_pt))
+            )
+            for bjets_pt_idx in smeared_jets_pt:
+                p_b_t, p_b_tbar, m_b_t, m_b_tbar = ttbar_bjets_kinematics(
+                    bjets_pt_idx,
+                    bjets_phi,
+                    bjets_eta,
+                    bjets_mass,
+                    idx_t,
+                    idx_tbar
+                )
+
+                met_resolution = 20 + met / 20
+                met_x = (met * np.cos(met_phi))[0]
+                met_y = (met * np.sin(met_phi))[0]
+
+                eta_range = np.linspace(-5, 5, 51)
+                eta_grid = np.array(np.meshgrid(eta_range, eta_range)).T.reshape(-1, 2)
+                for nu_eta_t, nu_eta_tbar in eta_grid:
+                    total_nu_px, total_nu_py = total_neutrino_momentum(
+                        nu_eta_t, m_b_t, p_b_t, m_l_t, p_l_t,
+                        nu_eta_tbar, m_b_tbar, p_b_tbar, m_l_tbar,  p_l_tbar, m_t_val
+                    )
+                    if total_nu_px is None:
+                        continue
+
+                    for nu_px, nu_py in zip(total_nu_px, total_nu_py):
+                        if np.iscomplex(nu_px) or np.iscomplex(nu_py):
+                            continue
+                        weight = solution_weight(met_x, met_y, nu_px, nu_py, met_resolution)
+                        if weight > best_weight:
+                            best_weight = weight
+    return best_weight
+
+
 if __name__ == "__main__":
     sm_path = "./mg5_data/SM-process_spin-ON/Events/run_01_decayed_1/tag_1_delphes_events.root"
     sm_events = uproot.open(sm_path)["Delphes"]
@@ -372,56 +429,18 @@ if __name__ == "__main__":
     muon_eta = sm_events["Muon.Eta"].array()[muon_mask]
     muon_charge = sm_events["Muon.Charge"].array()[muon_mask]
 
-    best_weights = []
-    for idx in tqdm(range(len(bjets_mass))):
-        best_weight = -1
-        for m_t_val in np.linspace(171, 174, 7):
-            p_l_t, p_l_tbar, m_l_t, m_l_tbar = lepton_kinematics(
-                electron_pt[idx], electron_phi[idx], electron_eta[idx], electron_charge[idx],
-                muon_pt[idx], muon_phi[idx], muon_eta[idx], muon_charge[idx]
-            )
-            if p_l_t is None:
-                continue
+    # MET for all events
+    met = sm_events["MissingET.MET"].array()
+    met_phi = sm_events["MissingET.Phi"].array()
 
-            if len(bjets_mass[idx]) < 2:
-                continue
-            bjets_combinations = list(combinations(range(len(bjets_mass[idx])), 2))
-            for idx_t, idx_tbar in bjets_combinations:
-                smeared_jets_pt = np.random.normal(
-                    bjets_pt[idx],
-                    bjets_pt[idx]*0.08,
-                    (5, len(bjets_pt[idx]))
-                )
-                for bjets_pt_idx in smeared_jets_pt:
-                    p_b_t, p_b_tbar, m_b_t, m_b_tbar = ttbar_bjets_kinematics(
-                        bjets_pt_idx,
-                        bjets_phi[idx],
-                        bjets_eta[idx],
-                        bjets_mass[idx],
-                        idx_t,
-                        idx_tbar
-                    )
-
-                    met = sm_events["MissingET.MET"].array()[idx]
-                    met_phi = sm_events["MissingET.Phi"].array()[idx]
-                    met_resolution = 20 + met/20
-                    met_x = (met * np.cos(met_phi))[0]
-                    met_y = (met * np.sin(met_phi))[0]
-
-                    eta_range = np.linspace(-5, 5, 51)
-                    eta_grid = np.array(np.meshgrid(eta_range, eta_range)).T.reshape(-1, 2)
-                    for nu_eta_t, nu_eta_tbar in eta_grid:
-                        total_nu_px, total_nu_py = total_neutrino_momentum(
-                            nu_eta_t, m_b_t, p_b_t, m_l_t, p_l_t,
-                            nu_eta_tbar, m_b_tbar, p_b_tbar, m_l_tbar,  p_l_tbar, m_t_val
-                        )
-                        if total_nu_px is None:
-                            continue
-
-                        for nu_px, nu_py in zip(total_nu_px, total_nu_py):
-                            if np.iscomplex(nu_px) or np.iscomplex(nu_py):
-                                continue
-                            weight = solution_weight(met_x, met_y, nu_px, nu_py, met_resolution)
-                            if weight > best_weight:
-                                best_weight = weight
-        best_weights.append(best_weight)
+    ray.init()
+    futures = [
+        reconstruct_event.remote(
+            bjets_mass[idx], bjets_pt[idx], bjets_phi[idx], bjets_eta[idx],
+            electron_pt[idx], electron_phi[idx], electron_eta[idx], electron_charge[idx],
+            muon_pt[idx], muon_phi[idx], muon_eta[idx], muon_charge[idx],
+            met[idx], met_phi[idx], idx
+        )
+        for idx in range(len(bjets_mass))
+    ]
+    best_weights = ray.get(futures)
