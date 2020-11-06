@@ -349,40 +349,40 @@ def reconstruct_event(bjets_mass, bjets_pt, bjets_phi, bjets_eta,
                       met, met_phi, idx):
     print(f"Event {idx}")
     best_weight = -1
-    for m_t_val in np.linspace(171, 174, 7):
-        p_l_t, p_l_tbar, m_l_t, m_l_tbar = lepton_kinematics(
-            electron_pt, electron_phi, electron_eta, electron_charge,
-            muon_pt, muon_phi, muon_eta, muon_charge
+    p_l_t, p_l_tbar, m_l_t, m_l_tbar = lepton_kinematics(
+        electron_pt, electron_phi, electron_eta, electron_charge,
+        muon_pt, muon_phi, muon_eta, muon_charge
+    )
+    if p_l_t is None:
+        return None
+
+    if len(bjets_mass) < 2:
+        return None
+    bjets_combinations = list(combinations(range(len(bjets_mass)), 2))
+    for idx_t, idx_tbar in bjets_combinations:
+        smeared_jets_pt = np.random.normal(
+            bjets_pt,
+            bjets_pt * 0.08,
+            (5, len(bjets_pt))
         )
-        if p_l_t is None:
-            continue
-
-        if len(bjets_mass) < 2:
-            continue
-        bjets_combinations = list(combinations(range(len(bjets_mass)), 2))
-        for idx_t, idx_tbar in bjets_combinations:
-            smeared_jets_pt = np.random.normal(
-                bjets_pt,
-                bjets_pt * 0.08,
-                (5, len(bjets_pt))
+        for bjets_pt_idx in smeared_jets_pt:
+            p_b_t, p_b_tbar, m_b_t, m_b_tbar = ttbar_bjets_kinematics(
+                bjets_pt_idx,
+                bjets_phi,
+                bjets_eta,
+                bjets_mass,
+                idx_t,
+                idx_tbar
             )
-            for bjets_pt_idx in smeared_jets_pt:
-                p_b_t, p_b_tbar, m_b_t, m_b_tbar = ttbar_bjets_kinematics(
-                    bjets_pt_idx,
-                    bjets_phi,
-                    bjets_eta,
-                    bjets_mass,
-                    idx_t,
-                    idx_tbar
-                )
 
-                met_resolution = 20 + met / 20
-                met_x = (met * np.cos(met_phi))[0]
-                met_y = (met * np.sin(met_phi))[0]
+            met_resolution = 20 + met / 20
+            met_x = (met * np.cos(met_phi))[0]
+            met_y = (met * np.sin(met_phi))[0]
 
-                eta_range = np.linspace(-5, 5, 51)
-                eta_grid = np.array(np.meshgrid(eta_range, eta_range)).T.reshape(-1, 2)
-                for nu_eta_t, nu_eta_tbar in eta_grid:
+            eta_range = np.linspace(-5, 5, 51)
+            eta_grid = np.array(np.meshgrid(eta_range, eta_range)).T.reshape(-1, 2)
+            for nu_eta_t, nu_eta_tbar in eta_grid:
+                for m_t_val in np.linspace(171, 174, 7):
                     total_nu_px, total_nu_py = total_neutrino_momentum(
                         nu_eta_t, m_b_t, p_b_t, m_l_t, p_l_t,
                         nu_eta_tbar, m_b_tbar, p_b_tbar, m_l_tbar,  p_l_tbar, m_t_val
