@@ -136,7 +136,7 @@ def calculate_neutrino_py(eta: float, m_b: float, p_b: Tuple[float],
              for calculating the neutrino's px.
     :rtype: Tuple[np.ndarray, float, float]
     """
-    alpha_1 = (m_t**2 - m_b**2 - m_w**2)
+    alpha_1 = (m_t**2 - m_b**2 - m_w**2)/2
     alpha_2 = (m_w**2 - m_l**2)/2
 
     beta_b = p_b[3]*np.sinh(eta) - p_b[2]*np.cosh(eta)
