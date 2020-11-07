@@ -97,13 +97,13 @@ def ttbar_leptons_kinematics(event_ls_pt: List[float], event_ls_phi: List[float]
         l_idx_tbar = 0
     pt_l_t = event_ls_pt[l_idx_t]
     phi_l_t = event_ls_phi[l_idx_t]
-    eta_l_t = event_ls_pt[l_idx_t]
+    eta_l_t = event_ls_eta[l_idx_t]
     m_l_t = m_ls[l_idx_t]
     p_l_t = four_momentum(pt_l_t, phi_l_t, eta_l_t, m_l_t)
 
     pt_l_tbar = event_ls_pt[l_idx_tbar]
     phi_l_tbar = event_ls_phi[l_idx_tbar]
-    eta_l_tbar = event_ls_pt[l_idx_tbar]
+    eta_l_tbar = event_ls_eta[l_idx_tbar]
     m_l_tbar = m_ls[l_idx_tbar]
     p_l_tbar = four_momentum(pt_l_tbar, phi_l_tbar, eta_l_tbar, m_l_tbar)
 
@@ -396,6 +396,7 @@ def reconstruct_event(bjets_mass, bjets_pt, bjets_phi, bjets_eta,
                         weight = solution_weight(met_x, met_y, nu_px, nu_py, met_resolution)
                         if weight > best_weight:
                             best_weight = weight
+    print(f"Best weight: {best_weight}")
     return best_weight
 
 
