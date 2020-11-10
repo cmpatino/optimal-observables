@@ -36,6 +36,13 @@ def four_momentum(pt: float, phi: float, eta: float, mass: float) -> Tuple[float
     return px, py, pz, E
 
 
+def neutrino_four_momentum(px, py, eta):
+    pt = np.sqrt(px**2 + py**2)
+    pz = pt * np.cosh(eta)
+    E = pt * np.sinh(eta)
+    return px, py, pz, E
+
+
 def ttbar_bjets_kinematics(event_bjets_pt: np.ndarray, event_bjets_phi: np.ndarray,
                            event_bjets_eta: np.ndarray, event_bjets_mass: np.ndarray, idx_t: int,
                            idx_tbar: int) -> Tuple[Tuple[float], Tuple[float], float, float]:
@@ -254,9 +261,7 @@ def total_neutrino_momentum(nu_eta_t: float, m_b_t: float, p_b_t: Tuple[float], 
         return None, None
     nu_tbar_px = calculate_neutrino_px(nu_tbar_py, eps, kappa)
 
-    total_nu_px = nu_t_px + nu_tbar_px
-    total_nu_py = nu_t_py + nu_tbar_py
-    return total_nu_px, total_nu_py
+    return nu_t_px, nu_t_py, nu_tbar_px, nu_tbar_py
 
 
 def lepton_kinematics(electron_pt: np.ndarray, electron_phi: np.ndarray, electron_eta: np.ndarray,
@@ -347,8 +352,15 @@ def reconstruct_event(bjets_mass, bjets_pt, bjets_phi, bjets_eta,
                       electron_pt, electron_phi, electron_eta, electron_charge,
                       muon_pt, muon_phi, muon_eta, muon_charge,
                       met, met_phi, idx):
-    print(f"Event {idx}")
+    if (idx % 100) == 0:
+        print(f"Event {idx}")
+
     best_weight = -1
+    best_b_t = None
+    best_l_t = None
+    best_b_tbar = None
+    best_l_tbar = None
+
     p_l_t, p_l_tbar, m_l_t, m_l_tbar = lepton_kinematics(
         electron_pt, electron_phi, electron_eta, electron_charge,
         muon_pt, muon_phi, muon_eta, muon_charge
@@ -362,7 +374,7 @@ def reconstruct_event(bjets_mass, bjets_pt, bjets_phi, bjets_eta,
     for idx_t, idx_tbar in bjets_combinations:
         smeared_jets_pt = np.random.normal(
             bjets_pt,
-            bjets_pt * 0.08,
+            bjets_pt * 0.14,
             (5, len(bjets_pt))
         )
         for bjets_pt_idx in smeared_jets_pt:
@@ -383,21 +395,37 @@ def reconstruct_event(bjets_mass, bjets_pt, bjets_phi, bjets_eta,
             eta_grid = np.array(np.meshgrid(eta_range, eta_range)).T.reshape(-1, 2)
             for nu_eta_t, nu_eta_tbar in eta_grid:
                 for m_t_val in np.linspace(171, 174, 7):
-                    total_nu_px, total_nu_py = total_neutrino_momentum(
+                    nu_t_px, nu_t_py, nu_tbar_px, nu_tbar_py = total_neutrino_momentum(
                         nu_eta_t, m_b_t, p_b_t, m_l_t, p_l_t,
-                        nu_eta_tbar, m_b_tbar, p_b_tbar, m_l_tbar,  p_l_tbar, m_t_val
+                        nu_eta_tbar, m_b_tbar, p_b_tbar, m_l_tbar, p_l_tbar, m_t_val
                     )
+                    total_nu_px = nu_t_px + nu_tbar_px
+                    total_nu_py = nu_t_py + nu_tbar_py
                     if total_nu_px is None:
                         continue
 
-                    for nu_px, nu_py in zip(total_nu_px, total_nu_py):
+                    for nu_idx, (nu_px, nu_py) in enumerate(zip(total_nu_px, total_nu_py)):
                         if np.iscomplex(nu_px) or np.iscomplex(nu_py):
                             continue
                         weight = solution_weight(met_x, met_y, nu_px, nu_py, met_resolution)
                         if weight > best_weight:
                             best_weight = weight
+                            best_b_t = p_b_t
+                            best_l_t = p_l_t
+                            best_nu_t = neutrino_four_momentum(
+                                nu_t_px[nu_idx],
+                                nu_t_py[nu_idx],
+                                nu_eta_t
+                            )
+                            best_b_tbar = p_b_tbar
+                            best_l_tbar = p_l_tbar
+                            best_nu_tbar = neutrino_four_momentum(
+                                nu_tbar_px[nu_idx],
+                                nu_tbar_py[nu_idx],
+                                nu_eta_tbar
+                            )
     print(f"Best weight: {best_weight}")
-    return best_weight
+    return best_b_t, best_l_t, best_nu_t, best_b_tbar, best_l_tbar, best_nu_tbar
 
 
 if __name__ == "__main__":
