@@ -4,7 +4,7 @@ import jax.numpy as jnp
 
 from jax import vmap
 from typing import List, Tuple
-from itertools import combinations
+from itertools import permutations
 
 from processing import event_selection
 
@@ -282,7 +282,7 @@ def reconstruct_event(bjets_mass, bjets_pt, bjets_phi, bjets_eta,
     if len(bjets_mass) < 2:
         return None
 
-    bjets_combinations_idxs = np.array(list(combinations(range(len(bjets_mass)), 2)))
+    bjets_combinations_idxs = np.array(list(permutations(range(len(bjets_mass)), 2)))
     smeared_bjets_pt = np.random.normal(
         bjets_pt,
         bjets_pt * 0.14,
