@@ -365,6 +365,8 @@ def reconstruct_event(bjets_mass, bjets_pt, bjets_phi, bjets_eta,
     total_nu_py = total_nu_py[real_mask]
 
     weights = solution_weight(met_x, met_y, total_nu_px, total_nu_py, met_resolution)
+    if len(weights) == 0:
+        return None
     best_weight_idx = np.argmax(weights)
 
     best_weight = weights[best_weight_idx]
