@@ -14,104 +14,64 @@ from processing import event_selection
 # m_m = 0.105658389
 
 
-def four_momentum(pt: float, phi: float, eta: float, mass: float) -> Tuple[float]:
-    """Calculate the four-momentum for a particle.
-
-    :param pt: Transverse momentum
-    :type pt: float
-    :param phi: Phi coordinate
-    :type phi: float
-    :param eta: Pseudorapidity
-    :type eta: float
-    :param mass: Particle mass
-    :type mass: float
-    :return: Particle's four-momentum
-    :rtype: Tuple[float]
-    """
+def four_momentum(pt: np.ndarray, phi: np.ndarray, eta: np.ndarray,
+                  mass: np.ndarray) -> np.ndarray:
     pt = np.abs(pt)
     px = pt*np.cos(phi)
     py = pt*np.sin(phi)
     pz = pt*np.sinh(eta)
-    E = np.sqrt(px**2 + py**2 + pz**2 + mass**2)
-    return px, py, pz, E
+    E = np.sqrt(px**2 + py**2 + pz**2 + mass**2).reshape(-1, 1)
+    return np.concatenate([px, py, pz, E], axis=1)
 
 
 def neutrino_four_momentum(px, py, eta):
     pt = np.sqrt(px**2 + py**2)
     pz = pt * np.cosh(eta)
     E = pt * np.sinh(eta)
-    return px, py, pz, E
+    return np.array([px, py, pz, E])
 
 
-def ttbar_bjets_kinematics(event_bjets_pt: np.ndarray, event_bjets_phi: np.ndarray,
-                           event_bjets_eta: np.ndarray, event_bjets_mass: np.ndarray, idx_t: int,
-                           idx_tbar: int) -> Tuple[Tuple[float], Tuple[float], float, float]:
-    """Calculate four-momentum for two b-jets. One jet is assumed to come from the
-    top quark and the other from the anti-top quark.
-
-    :param event_bjets_pt: Transverse momentum of two b-jets
-    :type event_bjets_pt: np.ndarray
-    :param event_bjets_phi: Phi angles for two b-jets
-    :type event_bjets_phi: np.ndarray
-    :param event_bjets_eta: Pseudorapidity of two b-jets
-    :type event_bjets_eta: np.ndarray
-    :param event_bjets_mass: Mass of two b-jets
-    :type event_bjets_mass: np.ndarray
-    :param idx_t: Index of b-jet assumed to be from the top quark
-    :type idx_t: int
-    :param idx_tbar: Index of b-jet assumed to be from the anti-top quark
-    :type idx_tbar: int
-    :return: Four-momenta and masses for the two b-jets assigned to each quark.
-    :rtype: Tuple[Tuple[float], Tuple[float], float, float]
-    """
-    pt_b_t = event_bjets_pt[idx_t]
-    pt_b_tbar = event_bjets_pt[idx_tbar]
-    phi_b_t = event_bjets_phi[idx_t]
-    phi_b_tbar = event_bjets_phi[idx_tbar]
-    eta_b_t = event_bjets_eta[idx_t]
-    eta_b_tbar = event_bjets_eta[idx_tbar]
-    m_b_t = event_bjets_mass[idx_t]
-    m_b_tbar = event_bjets_mass[idx_tbar]
-    p_b_t = four_momentum(pt_b_t, phi_b_t, eta_b_t, m_b_t)
-    p_b_tbar = four_momentum(pt_b_tbar, phi_b_tbar, eta_b_tbar, m_b_tbar)
-    return p_b_t, p_b_tbar, m_b_t, m_b_tbar
+def ttbar_bjets_kinematics(smeared_bjets_pt, bjets_phi, bjets_eta,
+                           bjets_mass, bjets_combinations_idxs):
+    n_smears = smeared_bjets_pt.shape[0]
+    pt_combinations = smeared_bjets_pt[:, bjets_combinations_idxs].reshape(-1, 2)
+    phi_combinations = np.tile(bjets_phi[bjets_combinations_idxs], (n_smears, 1))
+    eta_combinations = np.tile(bjets_eta[bjets_combinations_idxs], (n_smears, 1))
+    mass_combinations = np.tile(bjets_mass[bjets_combinations_idxs], (n_smears, 1))
+    p_b_t = four_momentum(
+        pt_combinations[:, 0:1],
+        phi_combinations[:, 0:1],
+        eta_combinations[:, 0:1],
+        mass_combinations[:, 0:1]
+    )
+    p_b_tbar = four_momentum(
+        pt_combinations[:, 1:],
+        phi_combinations[:, 1:],
+        eta_combinations[:, 1:],
+        mass_combinations[:, 1:]
+    )
+    return p_b_t, p_b_tbar, mass_combinations[:, 0:1], mass_combinations[:, 1:]
 
 
 def ttbar_leptons_kinematics(event_ls_pt: List[float], event_ls_phi: List[float],
                              event_ls_eta: List[float], event_ls_charge: List[float],
                              m_ls: List[float]) -> Tuple[Tuple[float], Tuple[float], float, float]:
-    """Calculate four-momentum for two leptons. The leptons are assigned to a
-    specific top quark using their charge.
-
-    :param event_ls_pt: Leptons' transverse momenta
-    :type event_ls_pt: List[float]
-    :param event_ls_phi: Lepton's phi angle
-    :type event_ls_phi: List[float]
-    :param event_ls_eta: Leptons' Pseudorapidity
-    :type event_ls_eta: List[float]
-    :param event_ls_charge: Leptons' charge
-    :type event_ls_charge: List[float]
-    :param m_ls: Leptons' masses
-    :type m_ls: List[float]
-    :return: Four-momenta and masses for leptons assigned to each quark.
-    :rtype: Tuple[Tuple[float], Tuple[float], float, float]
-    """
     if event_ls_charge[0] == 1:
         l_idx_t = 0
         l_idx_tbar = 1
     else:
         l_idx_t = 1
         l_idx_tbar = 0
-    pt_l_t = event_ls_pt[l_idx_t]
-    phi_l_t = event_ls_phi[l_idx_t]
-    eta_l_t = event_ls_eta[l_idx_t]
-    m_l_t = m_ls[l_idx_t]
+    pt_l_t = np.array(event_ls_pt[l_idx_t]).reshape(-1, 1)
+    phi_l_t = np.array(event_ls_phi[l_idx_t]).reshape(-1, 1)
+    eta_l_t = np.array(event_ls_eta[l_idx_t]).reshape(-1, 1)
+    m_l_t = np.array(m_ls[l_idx_t]).reshape(-1, 1)
     p_l_t = four_momentum(pt_l_t, phi_l_t, eta_l_t, m_l_t)
 
-    pt_l_tbar = event_ls_pt[l_idx_tbar]
-    phi_l_tbar = event_ls_phi[l_idx_tbar]
-    eta_l_tbar = event_ls_eta[l_idx_tbar]
-    m_l_tbar = m_ls[l_idx_tbar]
+    pt_l_tbar = np.array(event_ls_pt[l_idx_tbar]).reshape(-1, 1)
+    phi_l_tbar = np.array(event_ls_phi[l_idx_tbar]).reshape(-1, 1)
+    eta_l_tbar = np.array(event_ls_eta[l_idx_tbar]).reshape(-1, 1)
+    m_l_tbar = np.array(m_ls[l_idx_tbar]).reshape(-1, 1)
     p_l_tbar = four_momentum(pt_l_tbar, phi_l_tbar, eta_l_tbar, m_l_tbar)
 
     return p_l_t, p_l_tbar, m_l_t, m_l_tbar
@@ -120,40 +80,18 @@ def ttbar_leptons_kinematics(event_ls_pt: List[float], event_ls_phi: List[float]
 def calculate_neutrino_py(eta: float, m_b: float, p_b: Tuple[float],
                           m_l: float, p_l: Tuple[float], m_t: float,
                           m_w=80.4) -> Tuple[np.ndarray, float, float]:
-    """Calculate possible solutions for the py momentum of a neutrino in the event.
-    The solutions are calculated solving a second order polynomial. The b-jet and
-    lepton used in the calculation are the ones that result of the same top quark
-    decay as the neutrino.
 
-    :param eta: Assummed pseudorapidity for the neutrino.
-    :type eta: float
-    :param m_b: Mass of the b-jet.
-    :type m_b: float
-    :param p_b: Four-momentum of the b-jet.
-    :type p_b: Tuple[float]
-    :param m_l: Lepton's mass.
-    :type m_l: float
-    :param p_l: Lepton's four-momentum.
-    :type p_l: Tuple[float]
-    :param m_t: Assumed top quark mass.
-    :type m_t: float
-    :param m_w: Assumed W boson mass., defaults to 80.4
-    :type m_w: float, optional
-    :return: Possible solutions for py. eps and kappa are quantities required
-             for calculating the neutrino's px.
-    :rtype: Tuple[np.ndarray, float, float]
-    """
     alpha_1 = (m_t**2 - m_b**2 - m_w**2)/2
     alpha_2 = (m_w**2 - m_l**2)/2
 
-    beta_b = p_b[3]*np.sinh(eta) - p_b[2]*np.cosh(eta)
-    A_b = p_b[0]/beta_b
-    B_b = p_b[1]/beta_b
+    beta_b = p_b[:, 3:]*np.sinh(eta) - p_b[:, 2:3]*np.cosh(eta)
+    A_b = p_b[:, 0:1]/beta_b
+    B_b = p_b[:, 1:2]/beta_b
     C_b = alpha_1/beta_b
 
-    beta_l = p_l[3]*np.sinh(eta) - p_l[2]*np.cosh(eta)
-    A_l = p_l[0]/beta_l
-    B_l = p_l[1]/beta_l
+    beta_l = p_l[:, 3:]*np.sinh(eta) - p_l[:, 2:3]*np.cosh(eta)
+    A_l = p_l[:, 0:1]/beta_l
+    B_l = p_l[:, 1:2]/beta_l
     C_l = alpha_2/beta_l
 
     kappa = (B_l - B_b)/(A_b - A_l)
@@ -162,10 +100,14 @@ def calculate_neutrino_py(eta: float, m_b: float, p_b: Tuple[float],
     coeff_2 = (kappa**2)*(A_b**2 - 1) + B_b**2 - 1
     coeff_1 = 2*eps*kappa*(A_b**2 - 1) + 2*A_b*C_b*kappa + 2*B_b*C_b
     coeff_0 = (A_b**2 - 1)*eps**2 + 2*eps*A_b*C_b + C_b**2
-    if not np.isfinite(coeff_2 + coeff_1 + coeff_0):
-        return None, eps, kappa
-    roots = np.roots([coeff_2, coeff_1, coeff_0])
-    return roots, eps, kappa
+
+    coeffs = np.concatenate([coeff_2, coeff_1, coeff_0], axis=1)
+    sols = np.apply_along_axis(np.roots, 1, coeffs)
+
+    nu_py = np.concatenate([sols[:, 0:1], sols[:, 1:]], axis=0)
+    eps = np.tile(eps, (2, 1))
+    kappa = np.tile(kappa, (2, 1))
+    return nu_py, eps, kappa
 
 
 def calculate_neutrino_px(neutrino_py: np.ndarray, eps: float, kappa: float) -> np.ndarray:
@@ -206,37 +148,10 @@ def solution_weight(met_x: float, met_y: float, neutrino_px: float, neutrino_py:
     return weight_x*weight_y
 
 
-def total_neutrino_momentum(nu_eta_t: float, m_b_t: float, p_b_t: Tuple[float], m_l_t: float,
-                            p_l_t: Tuple[float], nu_eta_tbar: float, m_b_tbar: float,
-                            p_b_tbar: Tuple[float], m_l_tbar: float, p_l_tbar: Tuple[float],
-                            m_t_val: float) -> Tuple[np.ndarray, np.ndarray]:
-    """Calculate total momentum of the two neutrinos in the x and y components.
-
-    :param nu_eta_t: Pseudorapidity of neutrino assigned to top quark.
-    :type nu_eta_t: float
-    :param m_b_t: Mass of b-jet assigned to top quark.
-    :type m_b_t: float
-    :param p_b_t: Four-momentum of b-jet assigned to top quark.
-    :type p_b_t: Tuple[float]
-    :param m_l_t: Mass of lepton assigned to top quark.
-    :type m_l_t: float
-    :param p_l_t: Four-momentum of lepton assigned to top quark.
-    :type p_l_t: Tuple[float]
-    :param nu_eta_tbar: Pseudorapidity of neutrino assigned to anti-top quark.
-    :type nu_eta_tbar: float
-    :param m_b_tbar: Mass of b-jet assigned to anti-top quark.
-    :type m_b_tbar: float
-    :param p_b_tbar: Four-momentum of b-jet assigned to anti-top quark.
-    :type p_b_tbar: Tuple[float]
-    :param m_l_tbar: Mass of lepton assigned to anti-top quark.
-    :type m_l_tbar: float
-    :param p_l_tbar: Four-momentum of lepton assigned to anti-top quark.
-    :type p_l_tbar: Tuple[float]
-    :param m_t_val: Assumed mass for top quark.
-    :type m_t_val: float
-    :return: x and y components of total neutrino momentum in the event.
-    :rtype: Tuple[np.ndarray, np.ndarray]
-    """
+def total_neutrino_momentum(nu_eta_t, m_b_t, p_b_t, m_l_t,
+                            p_l_t, nu_eta_tbar, m_b_tbar,
+                            p_b_tbar, m_l_tbar, p_l_tbar,
+                            m_t_val) -> Tuple[np.ndarray, np.ndarray]:
     nu_t_py, eps, kappa = calculate_neutrino_py(
         nu_eta_t,
         m_b_t,
@@ -245,8 +160,6 @@ def total_neutrino_momentum(nu_eta_t: float, m_b_t: float, p_b_t: Tuple[float], 
         p_l_t,
         m_t_val
     )
-    if nu_t_py is None:
-        return None, None
     nu_t_px = calculate_neutrino_px(nu_t_py, eps, kappa)
 
     nu_tbar_py, eps, kappa = calculate_neutrino_py(
@@ -257,8 +170,6 @@ def total_neutrino_momentum(nu_eta_t: float, m_b_t: float, p_b_t: Tuple[float], 
         p_l_tbar,
         m_t_val
     )
-    if nu_tbar_py is None:
-        return None, None
     nu_tbar_px = calculate_neutrino_px(nu_tbar_py, eps, kappa)
 
     return nu_t_px, nu_t_py, nu_tbar_px, nu_tbar_py
@@ -347,19 +258,13 @@ def lepton_kinematics(electron_pt: np.ndarray, electron_phi: np.ndarray, electro
         )
 
 
-@ray.remote
+# @ray.remote
 def reconstruct_event(bjets_mass, bjets_pt, bjets_phi, bjets_eta,
                       electron_pt, electron_phi, electron_eta, electron_charge,
                       muon_pt, muon_phi, muon_eta, muon_charge,
                       met, met_phi, idx):
     if (idx % 100) == 0:
         print(f"Event {idx}")
-
-    best_weight = -1
-    best_b_t = None
-    best_l_t = None
-    best_b_tbar = None
-    best_l_tbar = None
 
     p_l_t, p_l_tbar, m_l_t, m_l_tbar = lepton_kinematics(
         electron_pt, electron_phi, electron_eta, electron_charge,
@@ -370,60 +275,107 @@ def reconstruct_event(bjets_mass, bjets_pt, bjets_phi, bjets_eta,
 
     if len(bjets_mass) < 2:
         return None
-    bjets_combinations = list(combinations(range(len(bjets_mass)), 2))
-    for idx_t, idx_tbar in bjets_combinations:
-        smeared_jets_pt = np.random.normal(
-            bjets_pt,
-            bjets_pt * 0.14,
-            (5, len(bjets_pt))
-        )
-        for bjets_pt_idx in smeared_jets_pt:
-            p_b_t, p_b_tbar, m_b_t, m_b_tbar = ttbar_bjets_kinematics(
-                bjets_pt_idx,
-                bjets_phi,
-                bjets_eta,
-                bjets_mass,
-                idx_t,
-                idx_tbar
-            )
 
-            met_resolution = 20 + met / 20
-            met_x = (met * np.cos(met_phi))[0]
-            met_y = (met * np.sin(met_phi))[0]
+    bjets_combinations_idxs = np.array(list(combinations(range(len(bjets_mass)), 2)))
+    smeared_bjets_pt = np.random.normal(
+        bjets_pt,
+        bjets_pt * 0.14,
+        (5, len(bjets_pt))
+    )
+    p_b_t, p_b_tbar, m_b_t, m_b_tbar = ttbar_bjets_kinematics(
+        smeared_bjets_pt,
+        bjets_phi,
+        bjets_eta,
+        bjets_mass,
+        bjets_combinations_idxs
+    )
 
-            eta_range = np.linspace(-5, 5, 51)
-            eta_grid = np.array(np.meshgrid(eta_range, eta_range)).T.reshape(-1, 2)
-            for nu_eta_t, nu_eta_tbar in eta_grid:
-                for m_t_val in np.linspace(171, 174, 7):
-                    nu_t_px, nu_t_py, nu_tbar_px, nu_tbar_py = total_neutrino_momentum(
-                        nu_eta_t, m_b_t, p_b_t, m_l_t, p_l_t,
-                        nu_eta_tbar, m_b_tbar, p_b_tbar, m_l_tbar, p_l_tbar, m_t_val
-                    )
-                    total_nu_px = nu_t_px + nu_tbar_px
-                    total_nu_py = nu_t_py + nu_tbar_py
-                    if total_nu_px is None:
-                        continue
+    met_resolution = 20 + met / 20
+    met_x = (met * np.cos(met_phi))[0]
+    met_y = (met * np.sin(met_phi))[0]
 
-                    for nu_idx, (nu_px, nu_py) in enumerate(zip(total_nu_px, total_nu_py)):
-                        if np.iscomplex(nu_px) or np.iscomplex(nu_py):
-                            continue
-                        weight = solution_weight(met_x, met_y, nu_px, nu_py, met_resolution)
-                        if weight > best_weight:
-                            best_weight = weight
-                            best_b_t = p_b_t
-                            best_l_t = p_l_t
-                            best_nu_t = neutrino_four_momentum(
-                                nu_t_px[nu_idx],
-                                nu_t_py[nu_idx],
-                                nu_eta_t
-                            )
-                            best_b_tbar = p_b_tbar
-                            best_l_tbar = p_l_tbar
-                            best_nu_tbar = neutrino_four_momentum(
-                                nu_tbar_px[nu_idx],
-                                nu_tbar_py[nu_idx],
-                                nu_eta_tbar
-                            )
+    # Vectorize Eta grid for loop
+    eta_range = np.linspace(-5, 5, 51)
+    eta_grid = np.array(np.meshgrid(eta_range, eta_range)).T.reshape(-1, 2)
+
+    eta_vectorized_mask = [i for i in range(eta_grid.shape[0])
+                           for j in range(p_b_t.shape[0])]
+    nu_etas = eta_grid[eta_vectorized_mask]
+
+    p_l_t = np.tile(p_l_t, (eta_grid.shape[0] * 5, 1))
+    p_l_tbar = np.tile(p_l_tbar, (eta_grid.shape[0] * 5, 1))
+    m_l_t = np.tile(m_l_t, (eta_grid.shape[0] * 5, 1))
+    m_l_tbar = np.tile(m_l_tbar, (eta_grid.shape[0] * 5, 1))
+
+    p_b_t = np.tile(p_b_t, (eta_grid.shape[0], 1))
+    p_b_tbar = np.tile(p_b_tbar, (eta_grid.shape[0], 1))
+    m_b_t = np.tile(m_b_t, (eta_grid.shape[0], 1))
+    m_b_tbar = np.tile(m_b_tbar, (eta_grid.shape[0], 1))
+
+    # Vectorize top mass for loop
+    m_t_search = np.linspace(171, 174, 7).reshape(-1, 1)
+    mass_vectorized_mask = [i for i in range(m_t_search.shape[0])
+                            for j in range(p_b_t.shape[0])]
+    m_t_val = m_t_search[mass_vectorized_mask]
+
+    p_l_t = np.tile(p_l_t, (m_t_search.shape[0], 1))
+    p_l_tbar = np.tile(p_l_tbar, (m_t_search.shape[0], 1))
+    m_l_t = np.tile(m_l_t, (m_t_search.shape[0], 1))
+    m_l_tbar = np.tile(m_l_tbar, (m_t_search.shape[0], 1))
+
+    p_b_t = np.tile(p_b_t, (m_t_search.shape[0], 1))
+    p_b_tbar = np.tile(p_b_tbar, (m_t_search.shape[0], 1))
+    m_b_t = np.tile(m_b_t, (m_t_search.shape[0], 1))
+    m_b_tbar = np.tile(m_b_tbar, (m_t_search.shape[0], 1))
+
+    nu_etas = np.tile(nu_etas, (m_t_search.shape[0], 1))
+
+    nu_eta_t = nu_etas[:, 0:1]
+    nu_eta_tbar = nu_etas[:, 1:]
+
+    nu_t_px, nu_t_py, nu_tbar_px, nu_tbar_py = total_neutrino_momentum(
+        nu_eta_t, m_b_t, p_b_t, m_l_t, p_l_t,
+        nu_eta_tbar, m_b_tbar, p_b_tbar, m_l_tbar, p_l_tbar, m_t_val
+    )
+    total_nu_px = nu_t_px + nu_tbar_px
+    total_nu_py = nu_t_py + nu_tbar_py
+
+    real_mask = np.isreal(total_nu_px) * np.isreal(total_nu_py)
+    real_mask_momentum = np.tile(real_mask, (1, 4))
+
+    p_b_t = np.tile(p_b_t, (2, 1))[real_mask_momentum].reshape(-1, 4)
+    p_l_t = np.tile(p_l_t, (2, 1))[real_mask_momentum].reshape(-1, 4)
+    nu_eta_t = np.tile(nu_eta_t, (2, 1))[real_mask]
+    nu_t_px = nu_t_px[real_mask]
+    nu_t_py = nu_t_py[real_mask]
+
+    p_b_tbar = np.tile(p_b_tbar, (2, 1))[real_mask_momentum].reshape(-1, 4)
+    p_l_tbar = np.tile(p_l_tbar, (2, 1))[real_mask_momentum].reshape(-1, 4)
+    nu_eta_tbar = np.tile(nu_eta_tbar, (2, 1))[real_mask]
+    nu_tbar_px = nu_tbar_px[real_mask]
+    nu_tbar_py = nu_tbar_py[real_mask]
+
+    total_nu_px = total_nu_px[real_mask]
+    total_nu_py = total_nu_py[real_mask]
+
+    weights = solution_weight(met_x, met_y, total_nu_px, total_nu_py, met_resolution)
+    best_weight_idx = np.argmax(weights)
+
+    best_weight = weights[best_weight_idx]
+    best_b_t = p_b_t[best_weight_idx]
+    best_l_t = p_l_t[best_weight_idx]
+    best_nu_t = neutrino_four_momentum(
+        np.real(nu_t_px[best_weight_idx]),
+        np.real(nu_t_py[best_weight_idx]),
+        nu_eta_t[best_weight_idx]
+    )
+    best_b_tbar = p_b_tbar[best_weight_idx]
+    best_l_tbar = p_l_tbar[best_weight_idx]
+    best_nu_tbar = neutrino_four_momentum(
+        np.real(nu_tbar_px[best_weight_idx]),
+        np.real(nu_tbar_py[best_weight_idx]),
+        nu_eta_tbar[best_weight_idx]
+    )
     print(f"Best weight: {best_weight}")
     return best_b_t, best_l_t, best_nu_t, best_b_tbar, best_l_tbar, best_nu_tbar
 
@@ -464,7 +416,7 @@ if __name__ == "__main__":
 
     ray.init()
     futures = [
-        reconstruct_event.remote(
+        reconstruct_event(
             bjets_mass[idx], bjets_pt[idx], bjets_phi[idx], bjets_eta[idx],
             electron_pt[idx], electron_phi[idx], electron_eta[idx], electron_charge[idx],
             muon_pt[idx], muon_phi[idx], muon_eta[idx], muon_charge[idx],
@@ -472,4 +424,4 @@ if __name__ == "__main__":
         )
         for idx in range(len(bjets_mass))
     ]
-    best_weights = ray.get(futures)
+    # best_weights = ray.get(futures)
