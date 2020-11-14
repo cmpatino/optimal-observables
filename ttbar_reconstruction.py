@@ -308,10 +308,10 @@ def reconstruct_event(bjets_mass, bjets_pt, bjets_phi, bjets_eta,
                            for j in range(p_b_t.shape[0])]
     nu_etas = eta_grid[eta_vectorized_mask]
 
-    p_l_t = np.tile(p_l_t, (eta_grid.shape[0] * 5, 1))
-    p_l_tbar = np.tile(p_l_tbar, (eta_grid.shape[0] * 5, 1))
-    m_l_t = np.tile(m_l_t, (eta_grid.shape[0] * 5, 1))
-    m_l_tbar = np.tile(m_l_tbar, (eta_grid.shape[0] * 5, 1))
+    p_l_t = np.tile(p_l_t, (eta_grid.shape[0] * p_b_t.shape[0], 1))
+    p_l_tbar = np.tile(p_l_tbar, (eta_grid.shape[0] * p_b_t.shape[0], 1))
+    m_l_t = np.tile(m_l_t, (eta_grid.shape[0] * p_b_t.shape[0], 1))
+    m_l_tbar = np.tile(m_l_tbar, (eta_grid.shape[0] * p_b_t.shape[0], 1))
 
     p_b_t = np.tile(p_b_t, (eta_grid.shape[0], 1))
     p_b_tbar = np.tile(p_b_tbar, (eta_grid.shape[0], 1))
