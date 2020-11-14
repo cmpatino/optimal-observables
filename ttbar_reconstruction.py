@@ -1,7 +1,8 @@
 import uproot
-import ray
 import numpy as np
+import jax.numpy as jnp
 
+from jax import vmap
 from typing import List, Tuple
 from itertools import combinations
 
@@ -77,6 +78,10 @@ def ttbar_leptons_kinematics(event_ls_pt: List[float], event_ls_phi: List[float]
     return p_l_t, p_l_tbar, m_l_t, m_l_tbar
 
 
+def find_roots(coeffs):
+    return jnp.roots(coeffs, strip_zeros=False)
+
+
 def calculate_neutrino_py(eta: float, m_b: float, p_b: Tuple[float],
                           m_l: float, p_l: Tuple[float], m_t: float,
                           m_w=80.4) -> Tuple[np.ndarray, float, float]:
@@ -102,7 +107,9 @@ def calculate_neutrino_py(eta: float, m_b: float, p_b: Tuple[float],
     coeff_0 = (A_b**2 - 1)*eps**2 + 2*eps*A_b*C_b + C_b**2
 
     coeffs = np.concatenate([coeff_2, coeff_1, coeff_0], axis=1)
-    sols = np.apply_along_axis(np.roots, 1, coeffs)
+    jcoeffs = jnp.array(coeffs)
+    jsols = vmap(find_roots)(jcoeffs)
+    sols = np.array(jsols)
 
     nu_py = np.concatenate([sols[:, 0:1], sols[:, 1:]], axis=0)
     eps = np.tile(eps, (2, 1))
@@ -258,7 +265,6 @@ def lepton_kinematics(electron_pt: np.ndarray, electron_phi: np.ndarray, electro
         )
 
 
-# @ray.remote
 def reconstruct_event(bjets_mass, bjets_pt, bjets_phi, bjets_eta,
                       electron_pt, electron_phi, electron_eta, electron_charge,
                       muon_pt, muon_phi, muon_eta, muon_charge,
@@ -414,8 +420,7 @@ if __name__ == "__main__":
     met = sm_events["MissingET.MET"].array()
     met_phi = sm_events["MissingET.Phi"].array()
 
-    ray.init()
-    futures = [
+    reconstructed_event = [
         reconstruct_event(
             bjets_mass[idx], bjets_pt[idx], bjets_phi[idx], bjets_eta[idx],
             electron_pt[idx], electron_phi[idx], electron_eta[idx], electron_charge[idx],
@@ -424,4 +429,3 @@ if __name__ == "__main__":
         )
         for idx in range(len(bjets_mass))
     ]
-    # best_weights = ray.get(futures)
