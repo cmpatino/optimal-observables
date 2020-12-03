@@ -2,7 +2,7 @@ import numpy as np
 
 
 def boost_to_frame(p_particle, p_frame):
-    b = p_frame[:3] / p_frame[3]
+    b = -p_frame[:3] / p_frame[3]
     b2 = np.sum(b**2)
     gamma = 1 / np.sqrt(1 - b2)
     bp = np.sum(p_particle[:3] * b)
