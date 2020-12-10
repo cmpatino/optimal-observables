@@ -27,8 +27,8 @@ def four_momentum(pt: np.ndarray, phi: np.ndarray, eta: np.ndarray,
 
 def neutrino_four_momentum(px, py, eta):
     pt = np.sqrt(px**2 + py**2)
-    pz = pt * np.cosh(eta)
-    E = pt * np.sinh(eta)
+    pz = pt * np.sinh(eta)
+    E = pt * np.cosh(eta)
     return np.array([px, py, pz, E])
 
 
@@ -385,7 +385,9 @@ def reconstruct_event(bjets_mass, bjets_pt, bjets_phi, bjets_eta,
         nu_eta_tbar[best_weight_idx]
     )
     print(f"Best weight: {best_weight}")
-    return best_b_t, best_l_t, best_nu_t, best_b_tbar, best_l_tbar, best_nu_tbar
+    p_top = best_b_t + best_l_t + best_nu_t
+    p_tbar = best_b_tbar + best_l_tbar + best_nu_tbar
+    return p_top + p_tbar
 
 
 if __name__ == "__main__":

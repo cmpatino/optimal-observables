@@ -12,3 +12,8 @@ def boost_to_frame(p_particle, p_frame):
     p_particle_boosted[:3] = p_particle[:3] + (gamma2 * bp * b) + (gamma * b * p_particle[3])
     p_particle_boosted[3] = gamma * (p_particle[3] + bp)
     return p_particle_boosted
+
+
+def boost_to_com(p1, p2):
+    p_com = p1 + p2
+    return boost_to_frame(p1, p_com), boost_to_frame(p2, p_com), p_com
