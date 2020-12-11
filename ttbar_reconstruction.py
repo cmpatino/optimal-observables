@@ -387,7 +387,7 @@ def reconstruct_event(bjets_mass, bjets_pt, bjets_phi, bjets_eta,
     print(f"Best weight: {best_weight}")
     p_top = best_b_t + best_l_t + best_nu_t
     p_tbar = best_b_tbar + best_l_tbar + best_nu_tbar
-    return p_top + p_tbar
+    return p_top, best_l_t, p_tbar, best_l_tbar
 
 
 if __name__ == "__main__":
