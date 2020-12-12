@@ -6,7 +6,7 @@ def boost_to_frame(p_particle, p_frame):
     b2 = np.sum(b**2, axis=1, keepdims=True)
     gamma = 1 / np.sqrt(1 - b2)
     bp = np.sum(p_particle[:, :3] * b, axis=1, keepdims=True)
-    gamma2 = (gamma - 1) / b2
+    gamma2 = np.clip((gamma - 1) / b2, a_min=0, a_max=None)
 
     space_coords = p_particle[:, :3] + (gamma2 * bp * b) + (gamma * b * p_particle[:, 3:])
     time_coord = gamma * (p_particle[:, 3:] + bp)
