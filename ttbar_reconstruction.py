@@ -5,6 +5,7 @@ import jax.numpy as jnp
 from jax import vmap
 from typing import List, Tuple
 from itertools import permutations
+from tqdm import tqdm
 
 from processing import event_selection
 
@@ -269,8 +270,6 @@ def reconstruct_event(bjets_mass, bjets_pt, bjets_phi, bjets_eta,
                       electron_pt, electron_phi, electron_eta, electron_charge,
                       muon_pt, muon_phi, muon_eta, muon_charge,
                       met, met_phi, idx):
-    if (idx % 100) == 0:
-        print(f"Event {idx}")
 
     p_l_t, p_l_tbar, m_l_t, m_l_tbar = lepton_kinematics(
         electron_pt, electron_phi, electron_eta, electron_charge,
@@ -369,7 +368,6 @@ def reconstruct_event(bjets_mass, bjets_pt, bjets_phi, bjets_eta,
         return None
     best_weight_idx = np.argmax(weights)
 
-    best_weight = weights[best_weight_idx]
     best_b_t = p_b_t[best_weight_idx]
     best_l_t = p_l_t[best_weight_idx]
     best_nu_t = neutrino_four_momentum(
@@ -384,7 +382,7 @@ def reconstruct_event(bjets_mass, bjets_pt, bjets_phi, bjets_eta,
         np.real(nu_tbar_py[best_weight_idx]),
         nu_eta_tbar[best_weight_idx]
     )
-    print(f"Best weight: {best_weight}")
+
     p_top = best_b_t + best_l_t + best_nu_t
     p_tbar = best_b_tbar + best_l_tbar + best_nu_tbar
     return p_top, best_l_t, p_tbar, best_l_tbar
@@ -392,8 +390,12 @@ def reconstruct_event(bjets_mass, bjets_pt, bjets_phi, bjets_eta,
 
 if __name__ == "__main__":
     sm_path = "./mg5_data/SM-process_spin-ON/Events/run_01_decayed_1/tag_1_delphes_events.root"
-    sm_events = uproot.open(sm_path)["Delphes"]
 
+    print("Loading events...", end="\r")
+    sm_events = uproot.open(sm_path)["Delphes"]
+    print("Loading events...Done")
+
+    print("Applying selection criteria...", end="\r")
     # Apply ATLAS selection criteria
     electron_mask = event_selection.select_electron(sm_events)
     muon_mask = event_selection.select_muon(sm_events)
@@ -423,6 +425,7 @@ if __name__ == "__main__":
     # MET for all events
     met = sm_events["MissingET.MET"].array()
     met_phi = sm_events["MissingET.Phi"].array()
+    print("Applying selection criteria...Done")
 
     reconstructed_events = [
         reconstruct_event(
@@ -431,7 +434,7 @@ if __name__ == "__main__":
             muon_pt[idx], muon_phi[idx], muon_eta[idx], muon_charge[idx],
             met[idx], met_phi[idx], idx
         )
-        for idx in range(len(bjets_mass))
+        for idx in tqdm(range(len(bjets_mass)))
     ]
     p_top = []
     p_l_t = []
