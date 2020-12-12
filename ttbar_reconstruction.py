@@ -1,3 +1,4 @@
+import os
 import uproot
 import numpy as np
 import jax.numpy as jnp
@@ -390,6 +391,7 @@ def reconstruct_event(bjets_mass, bjets_pt, bjets_phi, bjets_eta,
 
 if __name__ == "__main__":
     sm_path = "./mg5_data/SM-process_spin-ON/Events/run_01_decayed_1/tag_1_delphes_events.root"
+    output_dir = "reconstructions"
 
     print("Loading events...", end="\r")
     sm_events = uproot.open(sm_path)["Delphes"]
@@ -454,11 +456,11 @@ if __name__ == "__main__":
     p_tbar = np.concatenate(p_tbar, axis=0)
     p_l_tbar = np.concatenate(p_l_tbar, axis=0)
 
-    with open("p_top.npy", "wb") as f:
+    with open(os.path.join(output_dir, "p_top.npy"), "wb") as f:
         np.save(f, p_top)
-    with open("p_l_top.npy", "wb") as f:
+    with open(os.path.join(output_dir, "p_l_top.npy"), "wb") as f:
         np.save(f, p_l_t)
-    with open("p_tbar.npy", "wb") as f:
+    with open(os.path.join(output_dir, "p_tbar.npy"), "wb") as f:
         np.save(f, p_tbar)
-    with open("p_l_tbar.npy", "wb") as f:
+    with open(os.path.join(output_dir, "p_l_tbar.npy"), "wb") as f:
         np.save(f, p_l_tbar)

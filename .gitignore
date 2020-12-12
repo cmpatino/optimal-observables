@@ -141,3 +141,6 @@ notebooks/
 hep-docker/*.dat
 hep-docker/*.py
 hep-docker/generated-data/
+
+# Outputs
+reconstructions/
