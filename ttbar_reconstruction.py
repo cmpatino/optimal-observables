@@ -424,7 +424,7 @@ if __name__ == "__main__":
     met = sm_events["MissingET.MET"].array()
     met_phi = sm_events["MissingET.Phi"].array()
 
-    reconstructed_event = [
+    reconstructed_events = [
         reconstruct_event(
             bjets_mass[idx], bjets_pt[idx], bjets_phi[idx], bjets_eta[idx],
             electron_pt[idx], electron_phi[idx], electron_eta[idx], electron_charge[idx],
@@ -433,3 +433,29 @@ if __name__ == "__main__":
         )
         for idx in range(len(bjets_mass))
     ]
+    p_top = []
+    p_l_t = []
+    p_tbar = []
+    p_l_tbar = []
+
+    for event in reconstructed_events:
+        if event is None:
+            continue
+        p_top.append(event[0].reshape(1, -1))
+        p_l_t.append(event[1].reshape(1, -1))
+        p_tbar.append(event[2].reshape(1, -1))
+        p_l_tbar.append(event[3].reshape(1, -1))
+
+    p_top = np.concatenate(p_top, axis=0)
+    p_l_t = np.concatenate(p_l_t, axis=0)
+    p_tbar = np.concatenate(p_tbar, axis=0)
+    p_l_tbar = np.concatenate(p_l_tbar, axis=0)
+
+    with open("p_top.npy", "wb") as f:
+        np.save(f, p_top)
+    with open("p_l_top.npy", "wb") as f:
+        np.save(f, p_l_t)
+    with open("p_tbar.npy", "wb") as f:
+        np.save(f, p_tbar)
+    with open("p_l_tbar.npy", "wb") as f:
+        np.save(f, p_l_tbar)
