@@ -30,3 +30,10 @@ def create_basis(top_p_com):
     n_hat *= sign_mask
     r_hat *= sign_mask
     return k_hat, r_hat, n_hat
+
+
+def calculate_obs(p_particle, k_hat, r_hat, n_hat):
+    basis_change = np.linalg.inv(np.stack([k_hat, r_hat, n_hat], axis=-1))
+    p_new_basis = np.matmul(basis_change, np.expand_dims(p_particle[:, :3], axis=-1))
+    obs = p_new_basis[:, :3] / np.linalg.norm(p_new_basis, axis=1, keepdims=True)
+    return obs.squeeze(-1)
