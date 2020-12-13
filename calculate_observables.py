@@ -20,13 +20,13 @@ def boost_to_com(p1, p2):
 
 
 def create_basis(top_p_com):
-    k_hat = top_p_com[:, :3] / np.linalg.norm(top_p_com[:, :3])
+    k_hat = top_p_com[:, :3] / np.linalg.norm(top_p_com[:, :3], axis=-1, keepdims=True)
     p_hat = np.array([0, 0, 1]).reshape(1, -1)
-    theta = np.arccos(np.sum(k_hat * p_hat))
+    theta = np.arccos(np.sum(k_hat * p_hat, axis=-1, keepdims=True))
 
     n_hat = np.cross(p_hat, k_hat) / np.sin(theta)
     r_hat = (p_hat - (k_hat * np.cos(theta))) / np.sin(theta)
-    if theta > (np.pi / 2):
-        n_hat *= -1
-        r_hat *= -1
+    sign_mask = np.sign(np.cos(theta))
+    n_hat *= sign_mask
+    r_hat *= sign_mask
     return k_hat, r_hat, n_hat
