@@ -449,7 +449,7 @@ if __name__ == "__main__":
         if event is None:
             continue
         for name, reco_p in zip(reco_names, event):
-            recos[name].append(reco_p)
+            recos[name].append(reco_p.reshape(1, -1))
 
     reco_arrays = {name: np.concatenate(reco_list, axis=0) for name, reco_list in recos.items()}
 
