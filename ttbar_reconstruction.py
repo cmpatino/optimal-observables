@@ -386,7 +386,8 @@ def reconstruct_event(bjets_mass, bjets_pt, bjets_phi, bjets_eta,
 
     p_top = best_b_t + best_l_t + best_nu_t
     p_tbar = best_b_tbar + best_l_tbar + best_nu_tbar
-    return p_top, best_l_t, p_tbar, best_l_tbar
+    return (p_top, best_l_t, best_b_t, best_nu_t,
+            p_tbar, best_l_tbar, best_b_tbar, best_nu_tbar)
 
 
 if __name__ == "__main__":
@@ -438,29 +439,20 @@ if __name__ == "__main__":
         )
         for idx in tqdm(range(len(bjets_mass)))
     ]
-    p_top = []
-    p_l_t = []
-    p_tbar = []
-    p_l_tbar = []
+
+    reco_names = [
+        "p_top", "p_l_t", "p_b_t", "p_nu_t", "p_tbar", "p_l_tbar", "p_b_tbar", "p_nu_tbar",
+    ]
+    recos = {name: [] for name in reco_names}
 
     for event in reconstructed_events:
         if event is None:
             continue
-        p_top.append(event[0].reshape(1, -1))
-        p_l_t.append(event[1].reshape(1, -1))
-        p_tbar.append(event[2].reshape(1, -1))
-        p_l_tbar.append(event[3].reshape(1, -1))
+        for name, reco_p in zip(reco_names, event):
+            recos[name].append(reco_p)
 
-    p_top = np.concatenate(p_top, axis=0)
-    p_l_t = np.concatenate(p_l_t, axis=0)
-    p_tbar = np.concatenate(p_tbar, axis=0)
-    p_l_tbar = np.concatenate(p_l_tbar, axis=0)
+    reco_arrays = {name: np.concatenate(reco_list, axis=0) for name, reco_list in recos.items()}
 
-    with open(os.path.join(output_dir, "p_top.npy"), "wb") as f:
-        np.save(f, p_top)
-    with open(os.path.join(output_dir, "p_l_top.npy"), "wb") as f:
-        np.save(f, p_l_t)
-    with open(os.path.join(output_dir, "p_tbar.npy"), "wb") as f:
-        np.save(f, p_tbar)
-    with open(os.path.join(output_dir, "p_l_tbar.npy"), "wb") as f:
-        np.save(f, p_l_tbar)
+    for name, p_array in reco_arrays.items():
+        with open(os.path.join(output_dir, f"{name}.npy"), "wb") as f:
+            np.save(f, p_array)
