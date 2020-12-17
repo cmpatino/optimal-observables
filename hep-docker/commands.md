@@ -19,3 +19,6 @@
 5. Set quark mass to 172.5 GeV
 6. Change madspin card with relevant commands
 
+# 4. Save events to host
+1. docker cp <containerId>:/file/path/in/container/file /host/local/path/file
+    + File of interest is the one in `Events/`
