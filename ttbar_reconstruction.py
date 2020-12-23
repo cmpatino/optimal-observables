@@ -261,6 +261,7 @@ def lepton_kinematics(electron_pt: np.ndarray, electron_phi: np.ndarray, electro
         return p_l_t, p_l_tbar, m_l_t, m_l_tbar
 
     else:
+        return None, None, None, None
         raise ValueError(
             "Event does not have a valid combination of leptons: "
             f"{n_electrons} electrons and {n_muons} muons in the event."
@@ -391,8 +392,9 @@ def reconstruct_event(bjets_mass, bjets_pt, bjets_phi, bjets_eta,
 
 
 if __name__ == "__main__":
-    sm_path = "./mg5_data/SM-process_spin-ON/Events/run_01_decayed_1/tag_1_delphes_events.root"
-    output_dir = "reconstructions"
+    sm_path = "mg5_data/SM-process_spin-ON_100k/Events/run_01_decayed_1/tag_1_delphes_events.root"
+    output_dir = "reconstructions/SM_spin-ON_100k"
+    n_batches = 10
 
     print("Loading events...", end="\r")
     sm_events = uproot.open(sm_path)["Delphes"]
@@ -430,29 +432,35 @@ if __name__ == "__main__":
     met_phi = sm_events["MissingET.Phi"].array()
     print("Applying selection criteria...Done")
 
-    reconstructed_events = [
-        reconstruct_event(
-            bjets_mass[idx], bjets_pt[idx], bjets_phi[idx], bjets_eta[idx],
-            electron_pt[idx], electron_phi[idx], electron_eta[idx], electron_charge[idx],
-            muon_pt[idx], muon_phi[idx], muon_eta[idx], muon_charge[idx],
-            met[idx], met_phi[idx], idx
-        )
-        for idx in tqdm(range(len(bjets_mass)))
-    ]
-
     reco_names = [
         "p_top", "p_l_t", "p_b_t", "p_nu_t", "p_tbar", "p_l_tbar", "p_b_tbar", "p_nu_tbar",
     ]
-    recos = {name: [] for name in reco_names}
+    step_size = len(muon_phi) // n_batches
+    for batch_idx in range(n_batches):
+        init_idx = batch_idx * step_size
+        end_idx = init_idx + step_size
+        print(f"Reconstructing events from {init_idx} to {end_idx}")
+        reconstructed_events = [
+            reconstruct_event(
+                bjets_mass[idx], bjets_pt[idx], bjets_phi[idx], bjets_eta[idx],
+                electron_pt[idx], electron_phi[idx], electron_eta[idx], electron_charge[idx],
+                muon_pt[idx], muon_phi[idx], muon_eta[idx], muon_charge[idx],
+                met[idx], met_phi[idx], idx
+            )
+            for idx in tqdm(range(init_idx, end_idx))
+        ]
 
-    for event in reconstructed_events:
-        if event is None:
-            continue
-        for name, reco_p in zip(reco_names, event):
-            recos[name].append(reco_p.reshape(1, -1))
+        recos = {name: [] for name in reco_names}
 
-    reco_arrays = {name: np.concatenate(reco_list, axis=0) for name, reco_list in recos.items()}
+        for event in reconstructed_events:
+            if event is None:
+                continue
+            for name, reco_p in zip(reco_names, event):
+                recos[name].append(reco_p.reshape(1, -1))
 
-    for name, p_array in reco_arrays.items():
-        with open(os.path.join(output_dir, f"{name}.npy"), "wb") as f:
-            np.save(f, p_array)
+        reco_arrays = {name: np.concatenate(reco_list, axis=0) for name, reco_list in recos.items()}
+
+        for name, p_array in reco_arrays.items():
+            with open(os.path.join(output_dir, f"{name}_batch_{batch_idx}.npy"), "wb") as f:
+                np.save(f, p_array)
+        del recos, reco_arrays, reconstructed_events
