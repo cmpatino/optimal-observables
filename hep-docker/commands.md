@@ -20,5 +20,6 @@
 6. Change madspin card with relevant commands
 
 # 4. Save events to host
-1. docker cp <containerId>:/file/path/in/container/file /host/local/path/file
+1. sudo docker container ls
+2. sudo docker cp <containerId>:/file/path/in/container/file /host/local/path/file
     + File of interest is the one in `Events/`
