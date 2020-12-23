@@ -32,8 +32,30 @@ def create_basis(top_p_com):
     return k_hat, r_hat, n_hat
 
 
-def calculate_obs(p_particle, k_hat, r_hat, n_hat):
+def calculate_cosine_obs(p_particle, k_hat, r_hat, n_hat):
     basis_change = np.linalg.inv(np.stack([k_hat, r_hat, n_hat], axis=-1))
     p_new_basis = np.matmul(basis_change, np.expand_dims(p_particle[:, :3], axis=-1))
-    obs = p_new_basis[:, :3] / np.linalg.norm(p_new_basis, axis=1, keepdims=True)
-    return obs.squeeze(-1)
+    obs = (p_new_basis[:, :3] / np.linalg.norm(p_new_basis, axis=1, keepdims=True)).squeeze(-1)
+    cos_k = obs[:, 0]
+    cos_r = obs[:, 1]
+    cos_n = obs[:, 2]
+    return cos_k, cos_r, cos_n
+
+
+def obs_matrix(p_l_t, p_l_tbar, p_top, p_tbar):
+    obs_dict = dict()
+    p_top_com, p_tbar_com, p_com = boost_to_com(p_top, p_tbar)
+    k_hat, r_hat, n_hat = create_basis(p_top_com)
+
+    p_l_t_frame = boost_to_frame(p_l_t, p_top)
+    p_l_tbar_frame = boost_to_frame(p_l_tbar, p_tbar)
+
+    cos_k1, cos_r1, cos_n1 = calculate_cosine_obs(p_l_t_frame, k_hat, r_hat, n_hat)
+    cos_k2, cos_r2, cos_n2 = calculate_cosine_obs(p_l_tbar_frame, k_hat, r_hat, n_hat)
+    obs_dict["cos_k1"] = cos_k1
+    obs_dict["cos_r1"] = cos_r1
+    obs_dict["cos_n1"] = cos_n1
+    obs_dict["cos_k2"] = cos_k2
+    obs_dict["cos_r2"] = cos_r2
+    obs_dict["cos_n2"] = cos_n2
+    return obs_dict
