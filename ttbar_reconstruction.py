@@ -271,7 +271,8 @@ def lepton_kinematics(electron_pt: np.ndarray, electron_phi: np.ndarray, electro
 def reconstruct_event(bjets_mass, bjets_pt, bjets_phi, bjets_eta,
                       electron_pt, electron_phi, electron_eta, electron_charge,
                       muon_pt, muon_phi, muon_eta, muon_charge,
-                      met, met_phi, idx):
+                      met, met_phi, top_px, top_py, top_pz, top_E,
+                      tbar_px, tbar_py, tbar_pz, tbar_E):
 
     p_l_t, p_l_tbar, m_l_t, m_l_tbar = lepton_kinematics(
         electron_pt, electron_phi, electron_eta, electron_charge,
@@ -387,13 +388,16 @@ def reconstruct_event(bjets_mass, bjets_pt, bjets_phi, bjets_eta,
 
     p_top = best_b_t + best_l_t + best_nu_t
     p_tbar = best_b_tbar + best_l_tbar + best_nu_tbar
-    return (p_top, best_l_t, best_b_t, best_nu_t,
-            p_tbar, best_l_tbar, best_b_tbar, best_nu_tbar)
+    p_top_pre = np.array([top_px, top_py, top_pz, top_E])
+    p_tbar_pre = np.array([tbar_px, tbar_py, tbar_pz, tbar_E])
+
+    return (p_top, best_l_t, best_b_t, best_nu_t, p_top_pre,
+            p_tbar, best_l_tbar, best_b_tbar, best_nu_tbar, p_tbar_pre)
 
 
 if __name__ == "__main__":
-    sm_path = "mg5_data/SM-process_spin-ON_100k/Events/run_01_decayed_1/tag_1_delphes_events.root"
-    output_dir = "reconstructions/SM_spin-ON_100k"
+    sm_path = "mg5_data/SM-process_spin-ON_10k/Events/run_01_decayed_1/tag_1_delphes_events.root"
+    output_dir = "reconstructions/SM_spin-ON_10k"
     n_batches = 10
 
     print("Loading events...", end="\r")
@@ -427,13 +431,28 @@ if __name__ == "__main__":
     muon_eta = sm_events["Muon.Eta"].array()[muon_mask]
     muon_charge = sm_events["Muon.Charge"].array()[muon_mask]
 
+    # Get original quarks
+    status_mask = sm_events["Particle.Status"].array() == 22
+    t_mask = (sm_events["Particle.PID"].array() == 6) * status_mask
+    tbar_mask = (sm_events["Particle.PID"].array() == -6) * status_mask
+
+    top_px = sm_events["Particle.Px"].array()[t_mask]
+    top_py = sm_events["Particle.Py"].array()[t_mask]
+    top_pz = sm_events["Particle.Pz"].array()[t_mask]
+    top_E = sm_events["Particle.E"].array()[t_mask]
+    tbar_px = sm_events["Particle.Px"].array()[tbar_mask]
+    tbar_py = sm_events["Particle.Py"].array()[tbar_mask]
+    tbar_pz = sm_events["Particle.Pz"].array()[tbar_mask]
+    tbar_E = sm_events["Particle.E"].array()[tbar_mask]
+
     # MET for all events
     met = sm_events["MissingET.MET"].array()
     met_phi = sm_events["MissingET.Phi"].array()
     print("Applying selection criteria...Done")
 
     reco_names = [
-        "p_top", "p_l_t", "p_b_t", "p_nu_t", "p_tbar", "p_l_tbar", "p_b_tbar", "p_nu_tbar",
+        "p_top", "p_l_t", "p_b_t", "p_nu_t", "p_top_pre",
+        "p_tbar", "p_l_tbar", "p_b_tbar", "p_nu_tbar", "p_tbar_pre"
     ]
     step_size = len(muon_phi) // n_batches
     for batch_idx in range(n_batches):
@@ -445,7 +464,8 @@ if __name__ == "__main__":
                 bjets_mass[idx], bjets_pt[idx], bjets_phi[idx], bjets_eta[idx],
                 electron_pt[idx], electron_phi[idx], electron_eta[idx], electron_charge[idx],
                 muon_pt[idx], muon_phi[idx], muon_eta[idx], muon_charge[idx],
-                met[idx], met_phi[idx], idx
+                met[idx], met_phi[idx], top_px[idx], top_py[idx], top_pz[idx], top_E[idx],
+                tbar_px[idx], tbar_py[idx], tbar_pz[idx], tbar_E[idx]
             )
             for idx in tqdm(range(init_idx, end_idx))
         ]
