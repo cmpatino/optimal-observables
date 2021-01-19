@@ -3,7 +3,7 @@ from typing import List
 from processing import event_selection
 
 
-def normalize_dPhi(dphi: float) -> float:
+def normalize_dPhi(dphi: np.ndarray) -> np.ndarray:
     """Normalize delta phi to values between 0 and pi
 
     :param dphi: Unnormalized delta phi.
@@ -11,11 +11,30 @@ def normalize_dPhi(dphi: float) -> float:
     :return: normalized delta phi.
     :rtype: float
     """
-    if dphi < -np.pi:
-        return dphi + 2*np.pi
-    if dphi > np.pi:
-        return 2*np.pi - dphi
-    return abs(dphi)
+    mask1 = dphi < -np.pi
+    mask2 = dphi >= np.pi
+    normed_dphi = dphi
+    normed_dphi[mask1] += (2 * np.pi)
+    normed_dphi[mask2] -= (2 * np.pi)
+    return normed_dphi
+
+
+def eta(p: np.ndarray) -> np.ndarray:
+    p_norm = np.linalg.norm(p[:, :3], axis=1)
+    cos_theta = p[:, 2] / p_norm
+    return -0.5 * np.log((1 - cos_theta) / (1 + cos_theta))
+
+
+def phi(p: np.ndarray) -> np.ndarray:
+    p_x = p[:, 0]
+    p_y = p[:, 1]
+    return np.arctan2(p_x, p_y)
+
+
+def dR(p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
+    dEta = eta(p1) - eta(p2)
+    dPhi = normalize_dPhi(phi(p1) - phi(p2))
+    return np.sqrt((dPhi ** 2) + (dEta ** 2))
 
 
 def dphi_dilepton(events) -> List[float]:
