@@ -19,39 +19,80 @@ from processing import event_selection
 
 def four_momentum(pt: np.ndarray, phi: np.ndarray, eta: np.ndarray,
                   mass: np.ndarray) -> np.ndarray:
+    """Set four momentum from pt, phi, eta and mass.
+
+    :param pt: Transverse momentum.
+    :type pt: np.ndarray
+    :param phi: Azimuth angle.
+    :type phi: np.ndarray
+    :param eta: Pseudorapidity.
+    :type eta: np.ndarray
+    :param mass: Particle's mass.
+    :type mass: np.ndarray
+    :return: Four momentum in (x, y, z, E) coordinates.
+    :rtype: np.ndarray
+    """
     pt = np.abs(pt)
-    px = pt*np.cos(phi)
-    py = pt*np.sin(phi)
-    pz = pt*np.sinh(eta)
+    px = pt * np.cos(phi)
+    py = pt * np.sin(phi)
+    pz = pt * np.sinh(eta)
     E = np.sqrt(px**2 + py**2 + pz**2 + mass**2).reshape(-1, 1)
     return np.concatenate([px, py, pz, E], axis=1)
 
 
-def neutrino_four_momentum(px, py, eta):
+def neutrino_four_momentum(px: float, py: float, eta: float) -> np.ndarray:
+    """Generate neutrino's four momentum.
+
+    :param px: momentum's x component.
+    :type px: float
+    :param py: momentum's y component.
+    :type py: float
+    :param eta: Pseudorapidity.
+    :type eta: float
+    :return: Four momentum in (x, y, z, E) coordinates.
+    :rtype: np.ndarray
+    """
     pt = np.sqrt(px**2 + py**2)
     pz = pt * np.sinh(eta)
     E = pt * np.cosh(eta)
     return np.array([px, py, pz, E])
 
 
-def ttbar_bjets_kinematics(smeared_bjets_pt, bjets_phi, bjets_eta,
-                           bjets_mass, bjets_combinations_idxs):
+def ttbar_bjets_kinematics(smeared_bjets_pt: np.ndarray, bjets_phi: np.ndarray,
+                           bjets_eta: np.ndarray, bjets_mass: np.ndarray,
+                           bjets_combinations_idxs: np.ndarray) -> Tuple[np.ndarray]:
+    """Create four momenta for b-jets from possible jet permutations. pt comes with
+    extra entries due to smearing for the reconstruction.
+
+    :param smeared_bjets_pt: pt for two b-jets smeared n times.
+    :type smeared_bjets_pt: np.ndarray
+    :param bjets_phi: phi for two b-jets.
+    :type bjets_phi: np.ndarray
+    :param bjets_eta: eta for two b-jets.
+    :type bjets_eta: np.ndarray
+    :param bjets_mass: mass for two b-jets.
+    :type bjets_mass: np.ndarray
+    :param bjets_combinations_idxs: Indexes for possible permutations of b-jets.
+    :type bjets_combinations_idxs: np.ndarray
+    :return: Four-momenta for two b-jets and their masses assigned to top quarks.
+    :rtype: Tuple[np.ndarray]
+    """
     n_smears = smeared_bjets_pt.shape[0]
     pt_combinations = smeared_bjets_pt[:, bjets_combinations_idxs].reshape(-1, 2)
     phi_combinations = np.tile(bjets_phi[bjets_combinations_idxs], (n_smears, 1))
     eta_combinations = np.tile(bjets_eta[bjets_combinations_idxs], (n_smears, 1))
     mass_combinations = np.tile(bjets_mass[bjets_combinations_idxs], (n_smears, 1))
     p_b_t = four_momentum(
-        pt_combinations[:, 0:1],
-        phi_combinations[:, 0:1],
-        eta_combinations[:, 0:1],
-        mass_combinations[:, 0:1]
+        pt=pt_combinations[:, 0:1],
+        phi=phi_combinations[:, 0:1],
+        eta=eta_combinations[:, 0:1],
+        mass=mass_combinations[:, 0:1]
     )
     p_b_tbar = four_momentum(
-        pt_combinations[:, 1:],
-        phi_combinations[:, 1:],
-        eta_combinations[:, 1:],
-        mass_combinations[:, 1:]
+        pt=pt_combinations[:, 1:],
+        phi=phi_combinations[:, 1:],
+        eta=eta_combinations[:, 1:],
+        mass=mass_combinations[:, 1:]
     )
     return p_b_t, p_b_tbar, mass_combinations[:, 0:1], mass_combinations[:, 1:]
 
@@ -120,38 +161,11 @@ def calculate_neutrino_py(eta: float, m_b: float, p_b: Tuple[float],
 
 
 def calculate_neutrino_px(neutrino_py: np.ndarray, eps: float, kappa: float) -> np.ndarray:
-    """Calculate neutrino's px.""
-
-    :param neutrino_py: Potential solutions for neutrino's py
-    :type neutrino_py: np.ndarray
-    :param eps: Variable encapsulating lepton and b-jet kinematics used for py solutions.
-    :type eps: float
-    :param kappa: Variable encapsulating lepton and b-jet kinematics used for py solutions.
-    :type kappa: float
-    :return: Potential solutions for neutrino's px
-    :rtype: np.ndarray
-    """
     return kappa*neutrino_py + eps
 
 
 def solution_weight(met_x: float, met_y: float, neutrino_px: float, neutrino_py: float,
                     met_resolution: float) -> float:
-    """Calculate the weight of the solution using potential neutrino's momentum solution
-    and observed missing ET.
-
-    :param met_x: x component of Missing ET.
-    :type met_x: float
-    :param met_y: x component of Missing ET.
-    :type met_y: float
-    :param neutrino_px: Potential solution of neutrino's px.
-    :type neutrino_px: float
-    :param neutrino_py: Potential solution of neutrino's py.'
-    :type neutrino_py: float
-    :param met_resolution: Resolution of MET measurement.
-    :type met_resolution: float
-    :return: Solution's weights.
-    :rtype: float
-    """
     weight_x = np.exp(-(met_x - neutrino_px)**2/(2*met_resolution**2))
     weight_y = np.exp(-(met_y - neutrino_py)**2/(2*met_resolution**2))
     return weight_x*weight_y
@@ -188,28 +202,6 @@ def lepton_kinematics(electron_pt: np.ndarray, electron_phi: np.ndarray, electro
                       electron_charge: np.ndarray, muon_pt: np.ndarray, muon_phi: np.ndarray,
                       muon_eta: np.ndarray, muon_charge: np.ndarray
                       ) -> Tuple[Tuple[float], Tuple[float], float, float]:
-    """Calculate lepton kinematics according to the types of leptons present in the event.
-
-    :param electron_pt: Transverse momenta of electrons in the event.
-    :type electron_pt: np.ndarray
-    :param electron_phi: Phi of electrons in the event.
-    :type electron_phi: np.ndarray
-    :param electron_eta: Pseudorapidities of electrons in the event.
-    :type electron_eta: np.ndarray
-    :param electron_charge: Charges of electrons in the event.
-    :type electron_charge: np.ndarray
-    :param muon_pt: Transverse momenta of muons in the event.
-    :type muon_pt: np.ndarray
-    :param muon_phi: Phi of muons in the event.
-    :type muon_phi: np.ndarray
-    :param muon_eta: Pseudorapidities of muons in the event.
-    :type muon_eta: np.ndarray
-    :param muon_charge: Charges of muons in the event.
-    :type muon_charge: np.ndarray
-    :raises ValueError: The number of leptons in the event is greater than two.
-    :return: Four-momenta and masses for leptons assigned to top and anti-top quarks.
-    :rtype: Tuple[Tuple[float], Tuple[float], float, float]
-    """
     if len(electron_pt) + len(muon_pt) < 2:
         return None, None, None, None
     n_electrons = len(electron_pt)
