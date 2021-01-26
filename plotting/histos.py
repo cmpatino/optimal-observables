@@ -38,7 +38,7 @@ def hist_n_particles(q: List[int], label: str) -> Figure:
     return fig
 
 
-def hist_var(q: List[float], label: str) -> Figure:
+def hist_var(q: List[float], label: str, **kwargs) -> Figure:
     """Generate histogram for continuous quantity.
 
     :param q: Quantity value per event.
@@ -54,7 +54,7 @@ def hist_var(q: List[float], label: str) -> Figure:
         figsize=(15, 8)
     )
 
-    bins, edges, _ = ax.hist(q, alpha=0.6, label=label, bins=20)
+    bins, edges, _ = ax.hist(q, alpha=0.6, label=label, bins=20, **kwargs)
     ax.set_title(label, fontsize=20, y=1.04)
 
     return fig
