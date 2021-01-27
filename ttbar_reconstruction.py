@@ -121,33 +121,60 @@ def ttbar_leptons_kinematics(event_ls_pt: List[float], event_ls_phi: List[float]
     return p_l_t, p_l_tbar, m_l_t, m_l_tbar
 
 
-def find_roots(coeffs):
+def find_roots(coeffs: jnp.DeviceArray):
+    """Wrapper of Jax's implementation of np.roots.
+
+    :param coeffs: Coefficients of polynomial to solve.
+    :type coeffs: jnp.DeviceArray
+    :return: Roots of polynomial
+    :rtype: jnp.DeviceArray
+    """
     return jnp.roots(coeffs, strip_zeros=False)
 
 
-def calculate_neutrino_py(eta: float, m_b: float, p_b: Tuple[float],
-                          m_l: float, p_l: Tuple[float], m_t: float,
-                          m_w=80.4) -> Tuple[np.ndarray, float, float]:
+def calculate_neutrino_py(eta: np.ndarray, m_b: np.ndarray, p_b: np.ndarray,
+                          m_l: np.ndarray, p_l: np.ndarray, m_t: np.ndarray,
+                          m_w=80.4) -> Tuple[np.ndarray]:
+    """Calculate solutions for neutrino's py by solving the roots of the polynomial from the Neutrino
+    Weighting method (https://lss.fnal.gov/archive/thesis/2000/fermilab-thesis-2006-53.pdf
+    Appendix B)
 
-    alpha_1 = (m_t**2 - m_b**2 - m_w**2)/2
-    alpha_2 = (m_w**2 - m_l**2)/2
+    :param eta: Neutrino eta.
+    :type eta: np.ndarray
+    :param m_b: b-jet mass.
+    :type m_b: np.ndarray
+    :param p_b: b-jet four momentum.
+    :type p_b: np.ndarray
+    :param m_l: Lepton's mass.
+    :type m_l: np.ndarray
+    :param p_l: Lepton's four momentum.
+    :type p_l: np.ndarray
+    :param m_t: Top's mass.
+    :type m_t: np.ndarray
+    :param m_w: W boson's mass., defaults to 80.4
+    :type m_w: float, optional
+    :return: Neutrino's py and quantities for calculate px.
+    :rtype: Tuple[np.ndarray]
+    """
+    alpha_1 = (m_t**2 - m_b**2 - m_w**2) / 2
+    alpha_2 = (m_w**2 - m_l**2) / 2
 
-    beta_b = p_b[:, 3:]*np.sinh(eta) - p_b[:, 2:3]*np.cosh(eta)
-    A_b = p_b[:, 0:1]/beta_b
-    B_b = p_b[:, 1:2]/beta_b
-    C_b = alpha_1/beta_b
+    beta_b = p_b[:, 3:] * np.sinh(eta) - p_b[:, 2:3] * np.cosh(eta)
+    A_b = p_b[:, 0:1] / beta_b
+    B_b = p_b[:, 1:2] / beta_b
+    C_b = alpha_1 / beta_b
 
-    beta_l = p_l[:, 3:]*np.sinh(eta) - p_l[:, 2:3]*np.cosh(eta)
-    A_l = p_l[:, 0:1]/beta_l
-    B_l = p_l[:, 1:2]/beta_l
-    C_l = alpha_2/beta_l
+    beta_l = p_l[:, 3:] * np.sinh(eta) - p_l[:, 2:3] * np.cosh(eta)
+    A_l = p_l[:, 0:1] / beta_l
+    B_l = p_l[:, 1:2] / beta_l
+    C_l = alpha_2 / beta_l
 
-    kappa = (B_l - B_b)/(A_b - A_l)
-    eps = (C_l - C_b)/(A_b - A_l)
+    kappa = (B_l - B_b) / (A_b - A_l)
+    eps = (C_l - C_b) / (A_b - A_l)
 
-    coeff_2 = (kappa**2)*(A_b**2 - 1) + B_b**2 - 1
-    coeff_1 = 2*eps*kappa*(A_b**2 - 1) + 2*A_b*C_b*kappa + 2*B_b*C_b
-    coeff_0 = (A_b**2 - 1)*eps**2 + 2*eps*A_b*C_b + C_b**2
+    coeff_2 = ((kappa**2) * (A_b**2 - 1)) + B_b**2 - 1
+    coeff_1 = (2 * eps * kappa * (A_b**2 - 1)) + (2 * A_b * C_b * kappa) + (2 * B_b * C_b)
+    coeff_0 = ((A_b**2 - 1) * eps**2) + (2 * eps * A_b * C_b) + C_b**2
 
     coeffs = np.concatenate([coeff_2, coeff_1, coeff_0], axis=1)
     jcoeffs = jnp.array(coeffs)
@@ -160,40 +187,41 @@ def calculate_neutrino_py(eta: float, m_b: float, p_b: Tuple[float],
     return nu_py, eps, kappa
 
 
-def calculate_neutrino_px(neutrino_py: np.ndarray, eps: float, kappa: float) -> np.ndarray:
-    return kappa*neutrino_py + eps
+def calculate_neutrino_px(nu_py: np.ndarray, eps: np.ndarray,
+                          kappa: np.ndarray) -> np.ndarray:
+    return (kappa * nu_py) + eps
 
 
-def solution_weight(met_x: float, met_y: float, neutrino_px: float, neutrino_py: float,
-                    met_resolution: float) -> float:
+def solution_weight(met_x: np.ndarray, met_y: np.ndarray, neutrino_px: np.ndarray,
+                    neutrino_py: np.ndarray, met_resolution: np.ndarray) -> np.ndarray:
     weight_x = np.exp(-(met_x - neutrino_px)**2/(2*met_resolution**2))
     weight_y = np.exp(-(met_y - neutrino_py)**2/(2*met_resolution**2))
-    return weight_x*weight_y
+    return weight_x * weight_y
 
 
-def total_neutrino_momentum(nu_eta_t, m_b_t, p_b_t, m_l_t,
-                            p_l_t, nu_eta_tbar, m_b_tbar,
-                            p_b_tbar, m_l_tbar, p_l_tbar,
-                            m_t_val) -> Tuple[np.ndarray, np.ndarray]:
+def get_neutrino_momentum(nu_eta_t, m_b_t, p_b_t, m_l_t,
+                          p_l_t, nu_eta_tbar, m_b_tbar,
+                          p_b_tbar, m_l_tbar, p_l_tbar,
+                          m_t_val) -> Tuple[np.ndarray]:
     nu_t_py, eps, kappa = calculate_neutrino_py(
-        nu_eta_t,
-        m_b_t,
-        p_b_t,
-        m_l_t,
-        p_l_t,
-        m_t_val
+        eta=nu_eta_t,
+        m_b=m_b_t,
+        p_b=p_b_t,
+        m_l=m_l_t,
+        p_l=p_l_t,
+        m_t=m_t_val
     )
-    nu_t_px = calculate_neutrino_px(nu_t_py, eps, kappa)
+    nu_t_px = calculate_neutrino_px(nu_py=nu_t_py, eps=eps, kappa=kappa)
 
     nu_tbar_py, eps, kappa = calculate_neutrino_py(
-        nu_eta_tbar,
-        m_b_tbar,
-        p_b_tbar,
-        m_l_tbar,
-        p_l_tbar,
-        m_t_val
+        eta=nu_eta_tbar,
+        m_b=m_b_tbar,
+        p_b=p_b_tbar,
+        m_l=m_l_tbar,
+        p_l=p_l_tbar,
+        m_t=m_t_val
     )
-    nu_tbar_px = calculate_neutrino_px(nu_tbar_py, eps, kappa)
+    nu_tbar_px = calculate_neutrino_px(nu_py=nu_tbar_py, eps=eps, kappa=kappa)
 
     return nu_t_px, nu_t_py, nu_tbar_px, nu_tbar_py
 
@@ -332,7 +360,7 @@ def reconstruct_event(bjets_mass, bjets_pt, bjets_phi, bjets_eta,
     nu_eta_t = nu_etas[:, 0:1]
     nu_eta_tbar = nu_etas[:, 1:]
 
-    nu_t_px, nu_t_py, nu_tbar_px, nu_tbar_py = total_neutrino_momentum(
+    nu_t_px, nu_t_py, nu_tbar_px, nu_tbar_py = get_neutrino_momentum(
         nu_eta_t, m_b_t, p_b_t, m_l_t, p_l_t,
         nu_eta_tbar, m_b_tbar, p_b_tbar, m_l_tbar, p_l_tbar, m_t_val
     )
@@ -365,16 +393,16 @@ def reconstruct_event(bjets_mass, bjets_pt, bjets_phi, bjets_eta,
     best_b_t = p_b_t[best_weight_idx]
     best_l_t = p_l_t[best_weight_idx]
     best_nu_t = neutrino_four_momentum(
-        np.real(nu_t_px[best_weight_idx]),
-        np.real(nu_t_py[best_weight_idx]),
-        nu_eta_t[best_weight_idx]
+        px=np.real(nu_t_px[best_weight_idx]),
+        py=np.real(nu_t_py[best_weight_idx]),
+        eta=nu_eta_t[best_weight_idx]
     )
     best_b_tbar = p_b_tbar[best_weight_idx]
     best_l_tbar = p_l_tbar[best_weight_idx]
     best_nu_tbar = neutrino_four_momentum(
-        np.real(nu_tbar_px[best_weight_idx]),
-        np.real(nu_tbar_py[best_weight_idx]),
-        nu_eta_tbar[best_weight_idx]
+        px=np.real(nu_tbar_px[best_weight_idx]),
+        py=np.real(nu_tbar_py[best_weight_idx]),
+        eta=nu_eta_tbar[best_weight_idx]
     )
 
     p_top = best_b_t + best_l_t + best_nu_t
