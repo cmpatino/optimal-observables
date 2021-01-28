@@ -159,12 +159,12 @@ def calculate_neutrino_py(eta: np.ndarray, m_b: np.ndarray, p_b: np.ndarray,
     alpha_1 = (m_t**2 - m_b**2 - m_w**2) / 2
     alpha_2 = (m_w**2 - m_l**2) / 2
 
-    beta_b = p_b[:, 3:] * np.sinh(eta) - p_b[:, 2:3] * np.cosh(eta)
+    beta_b = p_b[:, 3:] * np.cosh(eta) - p_b[:, 2:3] * np.sinh(eta)
     A_b = p_b[:, 0:1] / beta_b
     B_b = p_b[:, 1:2] / beta_b
     C_b = alpha_1 / beta_b
 
-    beta_l = p_l[:, 3:] * np.sinh(eta) - p_l[:, 2:3] * np.cosh(eta)
+    beta_l = p_l[:, 3:] * np.cosh(eta) - p_l[:, 2:3] * np.sinh(eta)
     A_l = p_l[:, 0:1] / beta_l
     B_l = p_l[:, 1:2] / beta_l
     C_l = alpha_2 / beta_l
