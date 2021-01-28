@@ -389,6 +389,8 @@ def reconstruct_event(bjets_mass, bjets_pt, bjets_phi, bjets_eta,
     if len(weights) == 0:
         return None
     best_weight_idx = np.argmax(weights)
+    if weights[best_weight_idx] < 0.4:
+        return None
 
     best_b_t = p_b_t[best_weight_idx]
     best_l_t = p_l_t[best_weight_idx]
