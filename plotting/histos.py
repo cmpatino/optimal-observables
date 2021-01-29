@@ -54,7 +54,15 @@ def hist_var(q: List[float], label: str, **kwargs) -> Figure:
         figsize=(15, 8)
     )
 
-    bins, edges, _ = ax.hist(q, alpha=0.6, label=label, bins=20, **kwargs)
+    bins, edges, _ = ax.hist(
+        q,
+        alpha=0.6,
+        label=label,
+        bins=20,
+        histtype="step",
+        linewidth=4,
+        **kwargs
+    )
     ax.set_title(label, fontsize=20, y=1.04)
 
     return fig
