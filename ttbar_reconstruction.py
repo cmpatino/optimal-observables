@@ -392,6 +392,7 @@ def reconstruct_event(bjets_mass, bjets_pt, bjets_phi, bjets_eta,
     if weights[best_weight_idx] < 0.4:
         return None
 
+    best_weight = np.real(weights[best_weight_idx])
     best_b_t = p_b_t[best_weight_idx]
     best_l_t = p_l_t[best_weight_idx]
     best_nu_t = neutrino_four_momentum(
@@ -412,7 +413,7 @@ def reconstruct_event(bjets_mass, bjets_pt, bjets_phi, bjets_eta,
     idx_arr = np.array([idx])
 
     return (p_top, best_l_t, best_b_t, best_nu_t,
-            p_tbar, best_l_tbar, best_b_tbar, best_nu_tbar, idx_arr)
+            p_tbar, best_l_tbar, best_b_tbar, best_nu_tbar, idx_arr, best_weight)
 
 
 if __name__ == "__main__":
@@ -463,7 +464,7 @@ if __name__ == "__main__":
 
     reco_names = [
         "p_top", "p_l_t", "p_b_t", "p_nu_t",
-        "p_tbar", "p_l_tbar", "p_b_tbar", "p_nu_tbar", "idx"
+        "p_tbar", "p_l_tbar", "p_b_tbar", "p_nu_tbar", "idx", "weight"
     ]
     step_size = len(muon_phi) // n_batches
     for batch_idx in range(n_batches):
