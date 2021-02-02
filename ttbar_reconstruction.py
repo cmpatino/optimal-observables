@@ -417,8 +417,8 @@ def reconstruct_event(bjets_mass, bjets_pt, bjets_phi, bjets_eta,
 
 
 if __name__ == "__main__":
-    sm_path = "mg5_data/SM-process_spin-ON_10k/Events/run_01_decayed_1/tag_1_delphes_events.root"
-    output_dir = "reconstructions/SM_spin-ON_10k"
+    sm_path = "mg5_data/SM-process_spin-ON_100k/Events/run_01_decayed_1/tag_1_delphes_events.root"
+    output_dir = "reconstructions/SM_spin-ON_100k"
     n_batches = 10
 
     print("Loading events...", end="\r")
