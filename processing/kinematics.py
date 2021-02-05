@@ -31,6 +31,13 @@ def phi(p: np.ndarray) -> np.ndarray:
     return np.arctan2(p_x, p_y)
 
 
+def mass(p: np.ndarray) -> np.ndarray:
+    x2 = np.sum(p[:, :3] ** 2, axis=1, keepdims=True)
+    m2 = p[:, 3:] - x2
+    m2 *= ((np.sign(m2) < 0) * -1)
+    return np.sqrt(m2)
+
+
 def dR(p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
     dEta = eta(p1) - eta(p2)
     dPhi = normalize_dPhi(phi(p1) - phi(p2))
