@@ -15,8 +15,8 @@ def normalize_dPhi(dphi: np.ndarray) -> np.ndarray:
     mask2 = dphi >= np.pi
     normed_dphi = dphi
     normed_dphi[mask1] += (2 * np.pi)
-    normed_dphi[mask2] -= (2 * np.pi)
-    return normed_dphi
+    normed_dphi[mask2] = (2 * np.pi) - normed_dphi[mask2]
+    return np.abs(normed_dphi)
 
 
 def eta(p: np.ndarray) -> np.ndarray:
@@ -28,7 +28,7 @@ def eta(p: np.ndarray) -> np.ndarray:
 def phi(p: np.ndarray) -> np.ndarray:
     p_x = p[:, 0]
     p_y = p[:, 1]
-    return np.arctan2(p_x, p_y)
+    return np.arctan2(p_y, p_x)
 
 
 def mass(p: np.ndarray) -> np.ndarray:
@@ -65,7 +65,7 @@ def dphi_dilepton(events) -> List[float]:
     for idx, (phi, charge) in enumerate(zip(elec_phi, elec_charge)):
         if len(phi) == 0:
             if len(muon_charge[idx]) == 2:
-                dphi_vals.append(normalize_dPhi(muon_phi[idx][0] - muon_phi[idx][1]))
+                dphi_vals.append(normalize_dPhi(np.array(muon_phi[idx][0] - muon_phi[idx][1])))
             else:
                 continue
         elif len(phi) == 1:
@@ -73,11 +73,11 @@ def dphi_dilepton(events) -> List[float]:
                 continue
             if (charge[0] + muon_charge[idx][0]) != 0:
                 continue
-            dphi_vals.append(normalize_dPhi(phi[0] - muon_phi[idx][0]))
+            dphi_vals.append(normalize_dPhi(np.array(phi[0] - muon_phi[idx][0])))
         elif len(phi) == 2:
             if (charge[0] + charge[1]) != 0:
                 continue
-            dphi_vals.append(normalize_dPhi(phi[0] - phi[1]))
+            dphi_vals.append(normalize_dPhi(np.array(phi[0] - phi[1])))
     return dphi_vals
 
 
