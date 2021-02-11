@@ -38,34 +38,47 @@ def hist_n_particles(q: List[int], label: str) -> Figure:
     return fig
 
 
-def hist_var(q: List[float], label: str, **kwargs) -> Figure:
-    """Generate histogram for continuous quantity.
+def hist_var(q: List[float], ax: plt.Axes, **kwargs) -> plt.Axes:
+    """Create histogram with error bars.
 
-    :param q: Quantity value per event.
+    :param q: Values to create histogram.
     :type q: List[float]
-    :param label: Plot title.
-    :type label: str
-    :return: Figure with histogram and histogram ratio.
-    :rtype: Figure
+    :param ax: Axes in which histrogram is plotted.
+    :type ax: plt.Axes
+    :return: Axes with histogram.
+    :rtype: plt.Axes
     """
-
-    fig, ax = plt.subplots(
-        nrows=1,
-        figsize=(15, 8)
-    )
 
     bins, edges, _ = ax.hist(
         q,
         alpha=0.6,
-        label=label,
-        bins=20,
         histtype="step",
+        align="left",
         linewidth=4,
         **kwargs
     )
-    ax.set_title(label, fontsize=20, y=1.04)
+    errors = np.sqrt(bins)
+    bin_width = edges[1] - edges[0]
 
-    return fig
+    ax.bar(
+        x=edges[:-1],
+        bottom=bins,
+        height=errors,
+        width=bin_width,
+        alpha=0.0,
+        color='w',
+        hatch='/'
+    )
+    ax.bar(
+        x=edges[:-1],
+        bottom=bins,
+        height=-errors,
+        width=bin_width,
+        alpha=0.0,
+        color='w',
+        hatch='/'
+    )
+    return ax
 
 
 def ratio_hist(processes_q: List[List[float]], hist_labels: List[str],
