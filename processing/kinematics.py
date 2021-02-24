@@ -22,7 +22,11 @@ def normalize_dPhi(dphi: np.ndarray) -> np.ndarray:
 def eta(p: np.ndarray) -> np.ndarray:
     p_norm = np.linalg.norm(p[:, :3], axis=1)
     cos_theta = p[:, 2] / p_norm
-    return -0.5 * np.log((1 - cos_theta) / (1 + cos_theta))
+    unstable_mask = (cos_theta * cos_theta) >= 1
+    np.putmask(cos_theta, unstable_mask, 0)
+    eta_result = -0.5 * np.log((1 - cos_theta) / (1 + cos_theta))
+    np.putmask(eta_result, unstable_mask, 10e10)
+    return eta_result
 
 
 def phi(p: np.ndarray) -> np.ndarray:
