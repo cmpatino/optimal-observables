@@ -1,6 +1,7 @@
 import torch
 import pytorch_lightning as pl
 
+from torch.nn import functional as F
 from torch import nn
 from argparse import ArgumentParser
 
@@ -26,7 +27,9 @@ class FullyConnected(pl.LightningModule):
 
     def forward(self, x):
         x = self.input(x)
+        x = F.leaky_relu(x)
         x = self.hidden1(x)
+        x = F.leaky_relu(x)
         x = self.hidden2(x)
         return x
 
