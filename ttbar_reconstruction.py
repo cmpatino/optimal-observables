@@ -15,6 +15,8 @@ from processing import event_selection
 # m_w = 80.4
 # m_e = 0.000510998902
 # m_m = 0.105658389
+SIGMA_X = 10.
+SIGMA_Y = 10.
 
 
 def four_momentum(pt: np.ndarray, phi: np.ndarray, eta: np.ndarray,
@@ -54,7 +56,7 @@ def neutrino_four_momentum(px: float, py: float, eta: float) -> np.ndarray:
     """
     pt = np.sqrt(px**2 + py**2)
     pz = pt * np.sinh(eta)
-    E = pt * np.cosh(eta)
+    E = np.sqrt(pt ** 2  + pz ** 2) 
     return np.array([px, py, pz, E])
 
 
@@ -132,97 +134,70 @@ def find_roots(coeffs: jnp.DeviceArray):
     return jnp.roots(coeffs, strip_zeros=False)
 
 
-def calculate_neutrino_py(eta: np.ndarray, m_b: np.ndarray, p_b: np.ndarray,
-                          m_l: np.ndarray, p_l: np.ndarray, m_t: np.ndarray,
-                          m_w=80.4) -> Tuple[np.ndarray]:
-    """Calculate solutions for neutrino's py by solving the roots of the polynomial from the Neutrino
-    Weighting method (https://lss.fnal.gov/archive/thesis/2000/fermilab-thesis-2006-53.pdf
-    Appendix B)
+def scalar_product(p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
+    return p1[:, 3:] * p2[:, 3:] - np.sum(p1[:, :3] * p2[:, :3], axis=1, keepdims=True)
 
-    :param eta: Neutrino eta.
-    :type eta: np.ndarray
-    :param m_b: b-jet mass.
-    :type m_b: np.ndarray
-    :param p_b: b-jet four momentum.
-    :type p_b: np.ndarray
-    :param m_l: Lepton's mass.
-    :type m_l: np.ndarray
-    :param p_l: Lepton's four momentum.
-    :type p_l: np.ndarray
-    :param m_t: Top's mass.
-    :type m_t: np.ndarray
-    :param m_w: W boson's mass., defaults to 80.4
-    :type m_w: float, optional
-    :return: Neutrino's py and quantities for calculate px.
-    :rtype: Tuple[np.ndarray]
-    """
-    alpha_1 = (m_t**2 - m_b**2 - m_w**2) / 2
-    alpha_2 = (m_w**2 - m_l**2) / 2
 
-    beta_b = p_b[:, 3:] * np.cosh(eta) - p_b[:, 2:3] * np.sinh(eta)
-    A_b = p_b[:, 0:1] / beta_b
-    B_b = p_b[:, 1:2] / beta_b
-    C_b = alpha_1 / beta_b
+def solve_p_nu(eta: np.ndarray, p_l: np.ndarray, p_b: np.ndarray,
+               m_t: np.ndarray, m_b: np.ndarray, m_w=80.4) -> np.ndarray:
 
-    beta_l = p_l[:, 3:] * np.cosh(eta) - p_l[:, 2:3] * np.sinh(eta)
-    A_l = p_l[:, 0:1] / beta_l
-    B_l = p_l[:, 1:2] / beta_l
-    C_l = alpha_2 / beta_l
+    E_l_prime = (p_l[:, 3:] * np.cosh(eta)) - (p_l[:, 2:3] * np.sinh(eta))
+    E_b_prime = (p_b[:, 3:] * np.cosh(eta)) - (p_b[:, 2:3] * np.sinh(eta))
 
-    kappa = (B_l - B_b) / (A_b - A_l)
-    eps = (C_l - C_b) / (A_b - A_l)
+    A = ((p_l[:, 1:2] * E_b_prime - p_b[:, 1:2] * E_l_prime) /
+         (p_b[:, 0:1] * E_l_prime - p_l[:, 0:1] * E_b_prime))
+    l_b_prod = scalar_product(p1=p_l, p2=p_b)
+    B = ((E_l_prime * (m_t ** 2 - m_w ** 2 - m_b ** 2 - 2 * l_b_prod - E_b_prime * m_w ** 2)) /
+         (2 * (p_l[:, 0:1] * E_b_prime - p_b[:, 0:1] * E_l_prime)))
 
-    coeff_2 = ((kappa**2) * (A_b**2 - 1)) + B_b**2 - 1
-    coeff_1 = (2 * eps * kappa * (A_b**2 - 1)) + (2 * A_b * C_b * kappa) + (2 * B_b * C_b)
-    coeff_0 = ((A_b**2 - 1) * eps**2) + (2 * eps * A_b * C_b) + C_b**2
+    par1 = (p_l[:, 0:1] * A + p_l[:, 1:2]) / E_l_prime
+    C = A ** 2 + 1 - par1 ** 2
 
-    coeffs = np.concatenate([coeff_2, coeff_1, coeff_0], axis=1)
+    par2 = ((m_w ** 2) / 2 + p_l[:, 0:1] * B) / E_l_prime
+    D = 2 * (A * B - par2 * par1)
+    F = B * B - par2 * par2
+
+    coeffs = np.concatenate([F, D, C], axis=1)
     jcoeffs = jnp.array(coeffs)
     jsols = vmap(find_roots)(jcoeffs)
     sols = np.array(jsols)
 
-    nu_py = np.concatenate([sols[:, 0:1], sols[:, 1:]], axis=0)
-    eps = np.tile(eps, (2, 1))
-    kappa = np.tile(kappa, (2, 1))
-    return nu_py, eps, kappa
+    py1 = sols[:, 0:1]
+    py2 = sols[:, 1:]
+    py = np.concatenate([py1, py2], axis=0)
+    px1 = A * py1 + B
+    px2 = A * py2 + B
+    px = np.concatenate([px1, px2], axis=0)
+    return px, py
 
 
-def calculate_neutrino_px(nu_py: np.ndarray, eps: np.ndarray,
-                          kappa: np.ndarray) -> np.ndarray:
-    return (kappa * nu_py) + eps
-
-
-def solution_weight(met_x: np.ndarray, met_y: np.ndarray, neutrino_px: np.ndarray,
-                    neutrino_py: np.ndarray, met_resolution: np.ndarray) -> np.ndarray:
-    weight_x = np.exp(-(met_x - neutrino_px)**2/(2*met_resolution**2))
-    weight_y = np.exp(-(met_y - neutrino_py)**2/(2*met_resolution**2))
+def solution_weight(met_x: np.ndarray, met_y: np.ndarray,
+                    neutrino_px: np.ndarray, neutrino_py: np.ndarray) -> np.ndarray:
+    dx = met_x - neutrino_px
+    dy = met_y - neutrino_py
+    weight_x = np.exp(-(dx ** 2) / (2 * SIGMA_X ** 2))
+    weight_y = np.exp(-(dy ** 2) / (2 * SIGMA_Y ** 2))
     return weight_x * weight_y
 
 
-def get_neutrino_momentum(nu_eta_t, m_b_t, p_b_t, m_l_t,
-                          p_l_t, nu_eta_tbar, m_b_tbar,
-                          p_b_tbar, m_l_tbar, p_l_tbar,
+def get_neutrino_momentum(nu_eta_t, p_l_t, p_b_t, m_b_t,
+                          nu_eta_tbar, p_l_tbar, p_b_tbar, m_b_tbar,
                           m_t_val) -> Tuple[np.ndarray]:
-    nu_t_py, eps, kappa = calculate_neutrino_py(
+    nu_t_px, nu_t_py = solve_p_nu(
         eta=nu_eta_t,
-        m_b=m_b_t,
-        p_b=p_b_t,
-        m_l=m_l_t,
         p_l=p_l_t,
-        m_t=m_t_val
+        p_b=p_b_t,
+        m_t=m_t_val,
+        m_b=m_b_t
     )
-    nu_t_px = calculate_neutrino_px(nu_py=nu_t_py, eps=eps, kappa=kappa)
 
-    nu_tbar_py, eps, kappa = calculate_neutrino_py(
+    nu_tbar_px, nu_tbar_py = solve_p_nu(
         eta=nu_eta_tbar,
-        m_b=m_b_tbar,
-        p_b=p_b_tbar,
-        m_l=m_l_tbar,
         p_l=p_l_tbar,
-        m_t=m_t_val
+        p_b=p_b_tbar,
+        m_t=m_t_val,
+        m_b=m_b_tbar,
     )
-    nu_tbar_px = calculate_neutrino_px(nu_py=nu_tbar_py, eps=eps, kappa=kappa)
-
     return nu_t_px, nu_t_py, nu_tbar_px, nu_tbar_py
 
 
@@ -317,7 +292,6 @@ def reconstruct_event(bjets_mass, bjets_pt, bjets_phi, bjets_eta,
         bjets_combinations_idxs
     )
 
-    met_resolution = 20 + met / 20
     met_x = (met * np.cos(met_phi))[0]
     met_y = (met * np.sin(met_phi))[0]
 
@@ -361,8 +335,15 @@ def reconstruct_event(bjets_mass, bjets_pt, bjets_phi, bjets_eta,
     nu_eta_tbar = nu_etas[:, 1:]
 
     nu_t_px, nu_t_py, nu_tbar_px, nu_tbar_py = get_neutrino_momentum(
-        nu_eta_t, m_b_t, p_b_t, m_l_t, p_l_t,
-        nu_eta_tbar, m_b_tbar, p_b_tbar, m_l_tbar, p_l_tbar, m_t_val
+        nu_eta_t=nu_eta_t,
+        p_l_t=p_l_t,
+        p_b_t=p_b_t,
+        m_b_t=m_b_t,
+        nu_eta_tbar=nu_eta_tbar,
+        p_l_tbar=p_l_tbar,
+        p_b_tbar=p_b_tbar,
+        m_b_tbar=m_b_tbar,
+        m_t_val=m_t_val
     )
     total_nu_px = nu_t_px + nu_tbar_px
     total_nu_py = nu_t_py + nu_tbar_py
@@ -385,7 +366,12 @@ def reconstruct_event(bjets_mass, bjets_pt, bjets_phi, bjets_eta,
     total_nu_px = total_nu_px[real_mask]
     total_nu_py = total_nu_py[real_mask]
 
-    weights = solution_weight(met_x, met_y, total_nu_px, total_nu_py, met_resolution)
+    weights = solution_weight(
+        met_x=met_x,
+        met_y=met_y,
+        neutrino_px=total_nu_px,
+        neutrino_py=total_nu_py
+    )
     if len(weights) == 0:
         return None
     best_weight_idx = np.argmax(weights)
