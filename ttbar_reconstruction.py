@@ -1,9 +1,7 @@
 import os
 import uproot
 import numpy as np
-import jax.numpy as jnp
 
-from jax import vmap
 from typing import List, Tuple
 from itertools import permutations
 from tqdm import tqdm
@@ -123,19 +121,19 @@ def ttbar_leptons_kinematics(event_ls_pt: List[float], event_ls_phi: List[float]
     return p_l_t, p_l_tbar, m_l_t, m_l_tbar
 
 
-def find_roots(coeffs: jnp.DeviceArray):
-    """Wrapper of Jax's implementation of np.roots.
-
-    :param coeffs: Coefficients of polynomial to solve.
-    :type coeffs: jnp.DeviceArray
-    :return: Roots of polynomial
-    :rtype: jnp.DeviceArray
-    """
-    return jnp.roots(coeffs, strip_zeros=False)
-
-
 def scalar_product(p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
     return p1[:, 3:] * p2[:, 3:] - np.sum(p1[:, :3] * p2[:, :3], axis=1, keepdims=True)
+
+
+def solve_quadratic_equation(a: np.ndarray, b: np.ndarray, c: np.ndarray) -> np.ndarray:
+    a_c = a.astype(complex)
+    b_c = b.astype(complex)
+    c_c = c.astype(complex)
+
+    det = np.sqrt(b_c ** 2 - (4 * a_c * c_c))
+    sol1 = ((-b_c) + det) / (2 * a_c)
+    sol2 = ((-b_c) - det) / (2 * a_c)
+    return np.concatenate([sol1, sol2], axis=1)
 
 
 def solve_p_nu(eta: np.ndarray, p_l: np.ndarray, p_b: np.ndarray,
@@ -147,7 +145,7 @@ def solve_p_nu(eta: np.ndarray, p_l: np.ndarray, p_b: np.ndarray,
     A = ((p_l[:, 1:2] * E_b_prime - p_b[:, 1:2] * E_l_prime) /
          (p_b[:, 0:1] * E_l_prime - p_l[:, 0:1] * E_b_prime))
     l_b_prod = scalar_product(p1=p_l, p2=p_b)
-    B = ((E_l_prime * (m_t ** 2 - m_w ** 2 - m_b ** 2 - 2 * l_b_prod - E_b_prime * m_w ** 2)) /
+    B = ((E_l_prime * (m_t ** 2 - m_w ** 2 - m_b ** 2 - 2 * l_b_prod) - E_b_prime * m_w ** 2) /
          (2 * (p_l[:, 0:1] * E_b_prime - p_b[:, 0:1] * E_l_prime)))
 
     par1 = (p_l[:, 0:1] * A + p_l[:, 1:2]) / E_l_prime
@@ -157,10 +155,7 @@ def solve_p_nu(eta: np.ndarray, p_l: np.ndarray, p_b: np.ndarray,
     D = 2 * (A * B - par2 * par1)
     F = B * B - par2 * par2
 
-    coeffs = np.concatenate([C, D, F], axis=1)
-    jcoeffs = jnp.array(coeffs)
-    jsols = vmap(find_roots)(jcoeffs)
-    sols = np.array(jsols)
+    sols = solve_quadratic_equation(a=C, b=D, c=F)
 
     py1 = sols[:, 0:1]
     py2 = sols[:, 1:]
