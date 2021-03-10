@@ -11,10 +11,10 @@ from tqdm import tqdm
 from processing import event_selection
 
 
-# m_t = 172.5
-# m_w = 80.4
-# m_e = 0.000510998902
-# m_m = 0.105658389
+M_T = 172.5
+M_W = 80.4
+M_ELECTRON = 0.000510998902
+M_MUON = 0.105658389
 SIGMA_X = 10.
 SIGMA_Y = 10.
 
@@ -56,7 +56,7 @@ def neutrino_four_momentum(px: float, py: float, eta: float) -> np.ndarray:
     """
     pt = np.sqrt(px**2 + py**2)
     pz = pt * np.sinh(eta)
-    E = np.sqrt(pt ** 2  + pz ** 2) 
+    E = np.sqrt(pt ** 2 + pz ** 2)
     return np.array([px, py, pz, E])
 
 
@@ -139,7 +139,7 @@ def scalar_product(p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
 
 
 def solve_p_nu(eta: np.ndarray, p_l: np.ndarray, p_b: np.ndarray,
-               m_t: np.ndarray, m_b: np.ndarray, m_w=80.4) -> np.ndarray:
+               m_t: np.ndarray, m_b: np.ndarray, m_w=M_W) -> np.ndarray:
 
     E_l_prime = (p_l[:, 3:] * np.cosh(eta)) - (p_l[:, 2:3] * np.sinh(eta))
     E_b_prime = (p_b[:, 3:] * np.cosh(eta)) - (p_b[:, 2:3] * np.sinh(eta))
@@ -157,7 +157,7 @@ def solve_p_nu(eta: np.ndarray, p_l: np.ndarray, p_b: np.ndarray,
     D = 2 * (A * B - par2 * par1)
     F = B * B - par2 * par2
 
-    coeffs = np.concatenate([F, D, C], axis=1)
+    coeffs = np.concatenate([C, D, F], axis=1)
     jcoeffs = jnp.array(coeffs)
     jsols = vmap(find_roots)(jcoeffs)
     sols = np.array(jsols)
@@ -213,7 +213,7 @@ def lepton_kinematics(electron_pt: np.ndarray, electron_phi: np.ndarray, electro
         if np.sum(electron_charge) != 0:
             return None, None, None, None
 
-        m_ls = [0.000510998902] * 2
+        m_ls = [M_ELECTRON] * 2
         p_l_t, p_l_tbar, m_l_t, m_l_tbar = ttbar_leptons_kinematics(
             electron_pt,
             electron_phi,
@@ -227,7 +227,7 @@ def lepton_kinematics(electron_pt: np.ndarray, electron_phi: np.ndarray, electro
         if np.sum(muon_charge) != 0:
             return None, None, None, None
 
-        m_ls = [0.105658389] * 2
+        m_ls = [M_MUON] * 2
         p_l_t, p_l_tbar, m_l_t, m_l_tbar = ttbar_leptons_kinematics(
             muon_pt,
             muon_phi,
@@ -241,7 +241,7 @@ def lepton_kinematics(electron_pt: np.ndarray, electron_phi: np.ndarray, electro
         if (electron_charge[0] + muon_charge[0]) != 0:
             return None, None, None, None
 
-        m_ls = [0.000510998902, 0.105658389]
+        m_ls = [M_ELECTRON, M_MUON]
         event_ls_pt = [electron_pt[0], muon_pt[0]]
         event_ls_phi = [electron_phi[0], muon_phi[0]]
         event_ls_eta = [electron_eta[0], muon_eta[0]]
@@ -375,8 +375,6 @@ def reconstruct_event(bjets_mass, bjets_pt, bjets_phi, bjets_eta,
     if len(weights) == 0:
         return None
     best_weight_idx = np.argmax(weights)
-    if weights[best_weight_idx] < 0.4:
-        return None
 
     best_weight = np.real(weights[best_weight_idx])
     best_b_t = p_b_t[best_weight_idx]
