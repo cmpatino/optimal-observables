@@ -165,10 +165,10 @@ def solve_p_nu(eta: jnp.DeviceArray, p_l: jnp.DeviceArray, p_b: jnp.DeviceArray,
 
     py1 = sols[:, 0:1]
     py2 = sols[:, 1:]
-    py = jnp.concatenate([py1, py2], axis=0)
+    py = jnp.concatenate([py1, py1, py2, py2], axis=0)
     px1 = A * py1 + B
     px2 = A * py2 + B
-    px = jnp.concatenate([px1, px2], axis=0)
+    px = jnp.concatenate([px1, px2, px1, px2], axis=0)
     return px, py
 
 
@@ -358,15 +358,15 @@ def reconstruct_event(bjets_mass, bjets_pt, bjets_phi, bjets_eta,
     real_mask = np.isreal(total_nu_px) * np.isreal(total_nu_py)
     real_mask_momentum = np.tile(real_mask, (1, 4))
 
-    p_b_t = np.tile(p_b_t, (2, 1))[real_mask_momentum].reshape(-1, 4)
-    p_l_t = np.tile(p_l_t, (2, 1))[real_mask_momentum].reshape(-1, 4)
-    nu_eta_t = np.tile(nu_eta_t, (2, 1))[real_mask]
+    p_b_t = np.tile(p_b_t, (4, 1))[real_mask_momentum].reshape(-1, 4)
+    p_l_t = np.tile(p_l_t, (4, 1))[real_mask_momentum].reshape(-1, 4)
+    nu_eta_t = np.tile(nu_eta_t, (4, 1))[real_mask]
     nu_t_px = nu_t_px[real_mask]
     nu_t_py = nu_t_py[real_mask]
 
-    p_b_tbar = np.tile(p_b_tbar, (2, 1))[real_mask_momentum].reshape(-1, 4)
-    p_l_tbar = np.tile(p_l_tbar, (2, 1))[real_mask_momentum].reshape(-1, 4)
-    nu_eta_tbar = np.tile(nu_eta_tbar, (2, 1))[real_mask]
+    p_b_tbar = np.tile(p_b_tbar, (4, 1))[real_mask_momentum].reshape(-1, 4)
+    p_l_tbar = np.tile(p_l_tbar, (4, 1))[real_mask_momentum].reshape(-1, 4)
+    nu_eta_tbar = np.tile(nu_eta_tbar, (4, 1))[real_mask]
     nu_tbar_px = nu_tbar_px[real_mask]
     nu_tbar_py = nu_tbar_py[real_mask]
 
