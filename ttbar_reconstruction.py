@@ -1,7 +1,9 @@
 import os
 import uproot
 import numpy as np
+import jax.numpy as jnp
 
+from jax import jit
 from typing import List, Tuple
 from itertools import permutations
 from tqdm import tqdm
@@ -121,26 +123,30 @@ def ttbar_leptons_kinematics(event_ls_pt: List[float], event_ls_phi: List[float]
     return p_l_t, p_l_tbar, m_l_t, m_l_tbar
 
 
-def scalar_product(p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
-    return p1[:, 3:] * p2[:, 3:] - np.sum(p1[:, :3] * p2[:, :3], axis=1, keepdims=True)
+def scalar_product(p1: jnp.DeviceArray, p2: jnp.DeviceArray) -> jnp.DeviceArray:
+    return p1[:, 3:] * p2[:, 3:] - jnp.sum(p1[:, :3] * p2[:, :3], axis=1, keepdims=True)
 
 
-def solve_quadratic_equation(a: np.ndarray, b: np.ndarray, c: np.ndarray) -> np.ndarray:
-    a_c = a.astype(complex)
-    b_c = b.astype(complex)
-    c_c = c.astype(complex)
+def solve_quadratic_equation(
+    a: jnp.DeviceArray,
+    b: jnp.DeviceArray,
+    c: jnp.DeviceArray
+) -> jnp.DeviceArray:
+    a_c = a.astype(jnp.complex64)
+    b_c = b.astype(jnp.complex64)
+    c_c = c.astype(jnp.complex64)
 
-    det = np.sqrt(b_c ** 2 - (4 * a_c * c_c))
+    det = jnp.sqrt(b_c ** 2 - (4 * a_c * c_c))
     sol1 = ((-b_c) + det) / (2 * a_c)
     sol2 = ((-b_c) - det) / (2 * a_c)
-    return np.concatenate([sol1, sol2], axis=1)
+    return jnp.concatenate([sol1, sol2], axis=1)
 
 
-def solve_p_nu(eta: np.ndarray, p_l: np.ndarray, p_b: np.ndarray,
-               m_t: np.ndarray, m_b: np.ndarray, m_w=M_W) -> np.ndarray:
+def solve_p_nu(eta: jnp.DeviceArray, p_l: jnp.DeviceArray, p_b: jnp.DeviceArray,
+               m_t: jnp.DeviceArray, m_b: jnp.DeviceArray, m_w=M_W) -> jnp.DeviceArray:
 
-    E_l_prime = (p_l[:, 3:] * np.cosh(eta)) - (p_l[:, 2:3] * np.sinh(eta))
-    E_b_prime = (p_b[:, 3:] * np.cosh(eta)) - (p_b[:, 2:3] * np.sinh(eta))
+    E_l_prime = (p_l[:, 3:] * jnp.cosh(eta)) - (p_l[:, 2:3] * jnp.sinh(eta))
+    E_b_prime = (p_b[:, 3:] * jnp.cosh(eta)) - (p_b[:, 2:3] * jnp.sinh(eta))
 
     A = ((p_l[:, 1:2] * E_b_prime - p_b[:, 1:2] * E_l_prime) /
          (p_b[:, 0:1] * E_l_prime - p_l[:, 0:1] * E_b_prime))
@@ -159,10 +165,10 @@ def solve_p_nu(eta: np.ndarray, p_l: np.ndarray, p_b: np.ndarray,
 
     py1 = sols[:, 0:1]
     py2 = sols[:, 1:]
-    py = np.concatenate([py1, py2], axis=0)
+    py = jnp.concatenate([py1, py2], axis=0)
     px1 = A * py1 + B
     px2 = A * py2 + B
-    px = np.concatenate([px1, px2], axis=0)
+    px = jnp.concatenate([px1, px2], axis=0)
     return px, py
 
 
@@ -175,6 +181,7 @@ def solution_weight(met_x: np.ndarray, met_y: np.ndarray,
     return weight_x * weight_y
 
 
+@jit
 def get_neutrino_momentum(nu_eta_t, p_l_t, p_b_t, m_b_t,
                           nu_eta_tbar, p_l_tbar, p_b_tbar, m_b_tbar,
                           m_t_val) -> Tuple[np.ndarray]:
@@ -330,16 +337,21 @@ def reconstruct_event(bjets_mass, bjets_pt, bjets_phi, bjets_eta,
     nu_eta_tbar = nu_etas[:, 1:]
 
     nu_t_px, nu_t_py, nu_tbar_px, nu_tbar_py = get_neutrino_momentum(
-        nu_eta_t=nu_eta_t,
-        p_l_t=p_l_t,
-        p_b_t=p_b_t,
-        m_b_t=m_b_t,
-        nu_eta_tbar=nu_eta_tbar,
-        p_l_tbar=p_l_tbar,
-        p_b_tbar=p_b_tbar,
-        m_b_tbar=m_b_tbar,
-        m_t_val=m_t_val
+        nu_eta_t=jnp.array(nu_eta_t),
+        p_l_t=jnp.array(p_l_t),
+        p_b_t=jnp.array(p_b_t),
+        m_b_t=jnp.array(m_b_t),
+        nu_eta_tbar=jnp.array(nu_eta_tbar),
+        p_l_tbar=jnp.array(p_l_tbar),
+        p_b_tbar=jnp.array(p_b_tbar),
+        m_b_tbar=jnp.array(m_b_tbar),
+        m_t_val=jnp.array(m_t_val)
     )
+    nu_t_px = np.array(nu_t_px)
+    nu_t_py = np.array(nu_t_py)
+    nu_tbar_px = np.array(nu_tbar_px)
+    nu_tbar_py = np.array(nu_tbar_py)
+
     total_nu_px = nu_t_px + nu_tbar_px
     total_nu_py = nu_t_py + nu_tbar_py
 
