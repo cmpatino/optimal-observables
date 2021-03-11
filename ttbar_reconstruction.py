@@ -470,7 +470,7 @@ if __name__ == "__main__":
                 muon_pt[idx], muon_phi[idx], muon_eta[idx], muon_charge[idx],
                 met[idx], met_phi[idx], idx
             )
-            for idx in tqdm(range(init_idx, end_idx))
+            for idx in tqdm(range(init_idx, end_idx), leave=False)
         ]
 
         recos = {name: [] for name in reco_names}
