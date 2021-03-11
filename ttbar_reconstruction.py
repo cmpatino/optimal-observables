@@ -460,10 +460,9 @@ if __name__ == "__main__":
         "p_tbar", "p_l_tbar", "p_b_tbar", "p_nu_tbar", "idx", "weight"
     ]
     step_size = len(muon_phi) // n_batches
-    for batch_idx in range(n_batches):
+    for batch_idx in tqdm(range(n_batches)):
         init_idx = batch_idx * step_size
         end_idx = init_idx + step_size
-        print(f"Reconstructing events from {init_idx} to {end_idx}")
         reconstructed_events = [
             reconstruct_event(
                 bjets_mass[idx], bjets_pt[idx], bjets_phi[idx], bjets_eta[idx],
