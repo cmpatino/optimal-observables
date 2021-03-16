@@ -112,13 +112,23 @@ def ttbar_leptons_kinematics(event_ls_pt: List[float], event_ls_phi: List[float]
     phi_l_t = np.array(event_ls_phi[l_idx_t]).reshape(-1, 1)
     eta_l_t = np.array(event_ls_eta[l_idx_t]).reshape(-1, 1)
     m_l_t = np.array(m_ls[l_idx_t]).reshape(-1, 1)
-    p_l_t = four_momentum(pt_l_t, phi_l_t, eta_l_t, m_l_t)
+    p_l_t = four_momentum(
+        pt=pt_l_t,
+        phi=phi_l_t,
+        eta=eta_l_t,
+        mass=m_l_t
+    )
 
     pt_l_tbar = np.array(event_ls_pt[l_idx_tbar]).reshape(-1, 1)
     phi_l_tbar = np.array(event_ls_phi[l_idx_tbar]).reshape(-1, 1)
     eta_l_tbar = np.array(event_ls_eta[l_idx_tbar]).reshape(-1, 1)
     m_l_tbar = np.array(m_ls[l_idx_tbar]).reshape(-1, 1)
-    p_l_tbar = four_momentum(pt_l_tbar, phi_l_tbar, eta_l_tbar, m_l_tbar)
+    p_l_tbar = four_momentum(
+        pt=pt_l_tbar,
+        phi=phi_l_tbar,
+        eta=eta_l_tbar,
+        mass=m_l_tbar
+    )
 
     return p_l_t, p_l_tbar, m_l_t, m_l_tbar
 
@@ -217,11 +227,11 @@ def lepton_kinematics(electron_pt: np.ndarray, electron_phi: np.ndarray, electro
 
         m_ls = [M_ELECTRON] * 2
         p_l_t, p_l_tbar, m_l_t, m_l_tbar = ttbar_leptons_kinematics(
-            electron_pt,
-            electron_phi,
-            electron_eta,
-            electron_charge,
-            m_ls
+            event_ls_pt=electron_pt,
+            event_ls_phi=electron_phi,
+            event_ls_eta=electron_eta,
+            event_ls_charge=electron_charge,
+            m_ls=m_ls
         )
         return p_l_t, p_l_tbar, m_l_t, m_l_tbar
 
@@ -231,11 +241,11 @@ def lepton_kinematics(electron_pt: np.ndarray, electron_phi: np.ndarray, electro
 
         m_ls = [M_MUON] * 2
         p_l_t, p_l_tbar, m_l_t, m_l_tbar = ttbar_leptons_kinematics(
-            muon_pt,
-            muon_phi,
-            muon_eta,
-            muon_charge,
-            m_ls
+            event_ls_pt=muon_pt,
+            event_ls_phi=muon_phi,
+            event_ls_eta=muon_eta,
+            event_ls_charge=muon_charge,
+            m_ls=m_ls
         )
         return p_l_t, p_l_tbar, m_l_t, m_l_tbar
 
@@ -249,11 +259,11 @@ def lepton_kinematics(electron_pt: np.ndarray, electron_phi: np.ndarray, electro
         event_ls_eta = [electron_eta[0], muon_eta[0]]
         event_ls_charge = [electron_charge[0], muon_charge[0]]
         p_l_t, p_l_tbar, m_l_t, m_l_tbar = ttbar_leptons_kinematics(
-            event_ls_pt,
-            event_ls_phi,
-            event_ls_eta,
-            event_ls_charge,
-            m_ls
+            event_ls_pt=event_ls_pt,
+            event_ls_phi=event_ls_phi,
+            event_ls_eta=event_ls_eta,
+            event_ls_charge=event_ls_charge,
+            m_ls=m_ls
         )
         return p_l_t, p_l_tbar, m_l_t, m_l_tbar
 
@@ -271,8 +281,14 @@ def reconstruct_event(bjets_mass, bjets_pt, bjets_phi, bjets_eta,
                       met, met_phi, idx):
 
     p_l_t, p_l_tbar, m_l_t, m_l_tbar = lepton_kinematics(
-        electron_pt, electron_phi, electron_eta, electron_charge,
-        muon_pt, muon_phi, muon_eta, muon_charge
+        electron_pt=electron_pt,
+        electron_phi=electron_phi,
+        electron_eta=electron_eta,
+        electron_charge=electron_charge,
+        muon_pt=muon_pt,
+        muon_phi=muon_phi,
+        muon_eta=muon_eta,
+        muon_charge=muon_charge
     )
     if p_l_t is None:
         return None
@@ -287,11 +303,11 @@ def reconstruct_event(bjets_mass, bjets_pt, bjets_phi, bjets_eta,
         (5, len(bjets_pt))
     )
     p_b_t, p_b_tbar, m_b_t, m_b_tbar = ttbar_bjets_kinematics(
-        smeared_bjets_pt,
-        bjets_phi,
-        bjets_eta,
-        bjets_mass,
-        bjets_combinations_idxs
+        smeared_bjets_pt=smeared_bjets_pt,
+        bjets_phi=bjets_phi,
+        bjets_eta=bjets_eta,
+        bjets_mass=bjets_mass,
+        bjets_combinations_idxs=bjets_combinations_idxs
     )
 
     met_x = (met * np.cos(met_phi))[0]
@@ -465,10 +481,21 @@ if __name__ == "__main__":
         end_idx = init_idx + step_size
         reconstructed_events = [
             reconstruct_event(
-                bjets_mass[idx], bjets_pt[idx], bjets_phi[idx], bjets_eta[idx],
-                electron_pt[idx], electron_phi[idx], electron_eta[idx], electron_charge[idx],
-                muon_pt[idx], muon_phi[idx], muon_eta[idx], muon_charge[idx],
-                met[idx], met_phi[idx], idx
+                bjets_mass=bjets_mass[idx],
+                bjets_pt=bjets_pt[idx],
+                bjets_phi=bjets_phi[idx],
+                bjets_eta=bjets_eta[idx],
+                electron_pt=electron_pt[idx],
+                electron_phi=electron_phi[idx],
+                electron_eta=electron_eta[idx],
+                electron_charge=electron_charge[idx],
+                muon_pt=muon_pt[idx],
+                muon_phi=muon_phi[idx],
+                muon_eta=muon_eta[idx],
+                muon_charge=muon_charge[idx],
+                met=met[idx],
+                met_phi=met_phi[idx],
+                idx=idx
             )
             for idx in tqdm(range(init_idx, end_idx), leave=False)
         ]
