@@ -175,11 +175,9 @@ def solve_p_nu(eta: jnp.DeviceArray, p_l: jnp.DeviceArray, p_b: jnp.DeviceArray,
 
     py1 = sols[:, 0:1]
     py2 = sols[:, 1:]
-    py = jnp.concatenate([py1, py1, py2, py2], axis=0)
     px1 = A * py1 + B
     px2 = A * py2 + B
-    px = jnp.concatenate([px1, px2, px1, px2], axis=0)
-    return px, py
+    return px1, px2, py1, py2
 
 
 def solution_weight(met_x: np.ndarray, met_y: np.ndarray,
@@ -195,7 +193,7 @@ def solution_weight(met_x: np.ndarray, met_y: np.ndarray,
 def get_neutrino_momentum(nu_eta_t, p_l_t, p_b_t, m_b_t,
                           nu_eta_tbar, p_l_tbar, p_b_tbar, m_b_tbar,
                           m_t_val) -> Tuple[np.ndarray]:
-    nu_t_px, nu_t_py = solve_p_nu(
+    nu_t_px1, nu_t_px2, nu_t_py1, nu_t_py2 = solve_p_nu(
         eta=nu_eta_t,
         p_l=p_l_t,
         p_b=p_b_t,
@@ -203,13 +201,19 @@ def get_neutrino_momentum(nu_eta_t, p_l_t, p_b_t, m_b_t,
         m_b=m_b_t
     )
 
-    nu_tbar_px, nu_tbar_py = solve_p_nu(
+    nu_tbar_px1, nu_tbar_px2, nu_tbar_py1, nu_tbar_py2 = solve_p_nu(
         eta=nu_eta_tbar,
         p_l=p_l_tbar,
         p_b=p_b_tbar,
         m_t=m_t_val,
         m_b=m_b_tbar,
     )
+
+    nu_t_px = jnp.concatenate([nu_t_px1, nu_t_px1, nu_t_px2, nu_t_px2], axis=0)
+    nu_t_py = jnp.concatenate([nu_t_py1, nu_t_py1, nu_t_py2, nu_t_py2], axis=0)
+
+    nu_tbar_px = jnp.concatenate([nu_tbar_px1, nu_tbar_px2, nu_tbar_px1, nu_tbar_px2], axis=0)
+    nu_tbar_py = jnp.concatenate([nu_tbar_py1, nu_tbar_py2, nu_tbar_py1, nu_tbar_py2], axis=0)
     return nu_t_px, nu_t_py, nu_tbar_px, nu_tbar_py
 
 
