@@ -1,9 +1,11 @@
 import os
+import sys
 import uproot
 import numpy as np
 
 from typing import List, Tuple
 
+sys.path.append("..")
 from processing import event_selection
 
 
@@ -106,15 +108,6 @@ def solve_p_nu(eta, p_l, p_b, m_t, m_b, m_w=M_W):
     px1 = A * py1 + B
     px2 = A * py2 + B
     return px1, px2, py1, py2
-
-
-def solution_weight(met_x: np.ndarray, met_y: np.ndarray,
-                    neutrino_px: np.ndarray, neutrino_py: np.ndarray) -> np.ndarray:
-    dx = met_x - neutrino_px
-    dy = met_y - neutrino_py
-    weight_x = np.exp(-(dx ** 2) / (2 * SIGMA_X ** 2))
-    weight_y = np.exp(-(dy ** 2) / (2 * SIGMA_Y ** 2))
-    return weight_x * weight_y
 
 
 def lepton_kinematics(electron_pt: np.ndarray, electron_phi: np.ndarray, electron_eta: np.ndarray,
@@ -296,8 +289,8 @@ def reconstruct_event(bjets_mass, bjets_pt, bjets_phi, bjets_eta,
 
 
 if __name__ == "__main__":
-    sm_path = "mg5_data/SM-process_spin-ON_10k/Events/run_01_decayed_1/tag_1_delphes_events.root"
-    output_dir = "reconstructions/Naive-Reco"
+    sm_path = "../mg5_data/SM-process_spin-ON_10k/Events/run_01_decayed_1/tag_1_delphes_events.root"
+    output_dir = "../reconstructions/Naive-Reco"
     n_batches = 10
 
     print("Loading events...", end="\r")

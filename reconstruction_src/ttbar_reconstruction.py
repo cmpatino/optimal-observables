@@ -1,4 +1,5 @@
 import os
+import sys
 import uproot
 import numpy as np
 import jax.numpy as jnp
@@ -8,6 +9,7 @@ from typing import List, Tuple
 from itertools import permutations
 from tqdm import tqdm
 
+sys.path.append("..")
 from processing import event_selection
 
 
@@ -158,18 +160,19 @@ def solve_p_nu(eta: jnp.DeviceArray, p_l: jnp.DeviceArray, p_b: jnp.DeviceArray,
     E_l_prime = (p_l[:, 3:] * jnp.cosh(eta)) - (p_l[:, 2:3] * jnp.sinh(eta))
     E_b_prime = (p_b[:, 3:] * jnp.cosh(eta)) - (p_b[:, 2:3] * jnp.sinh(eta))
 
-    A = ((p_l[:, 1:2] * E_b_prime - p_b[:, 1:2] * E_l_prime) /
-         (p_b[:, 0:1] * E_l_prime - p_l[:, 0:1] * E_b_prime))
+    den = p_b[:, 0:1] * E_l_prime - p_l[:, 0:1] * E_b_prime
+    A = (p_l[:, 1:2] * E_b_prime - p_b[:, 1:2] * E_l_prime) / den
+
     l_b_prod = scalar_product(p1=p_l, p2=p_b)
-    B = ((E_l_prime * (m_t ** 2 - m_w ** 2 - m_b ** 2 - 2 * l_b_prod) - E_b_prime * m_w ** 2) /
-         (2 * (p_l[:, 0:1] * E_b_prime - p_b[:, 0:1] * E_l_prime)))
+    alpha = m_t ** 2 - m_w ** 2 - m_b ** 2 - 2 * l_b_prod
+    B = (E_l_prime * alpha - E_b_prime * m_w ** 2) / (-2 * den)
 
     par1 = (p_l[:, 0:1] * A + p_l[:, 1:2]) / E_l_prime
     C = A ** 2 + 1 - par1 ** 2
 
     par2 = ((m_w ** 2) / 2 + p_l[:, 0:1] * B) / E_l_prime
     D = 2 * (A * B - par2 * par1)
-    F = B * B - par2 * par2
+    F = B ** 2 - par2 ** 2
 
     sols = solve_quadratic_equation(a=C, b=D, c=F)
 
@@ -282,7 +285,7 @@ def lepton_kinematics(electron_pt: np.ndarray, electron_phi: np.ndarray, electro
 def reconstruct_event(bjets_mass, bjets_pt, bjets_phi, bjets_eta,
                       electron_pt, electron_phi, electron_eta, electron_charge,
                       muon_pt, muon_phi, muon_eta, muon_charge,
-                      met, met_phi, idx):
+                      met, met_phi, idx, rng):
 
     p_l_t, p_l_tbar, m_l_t, m_l_tbar = lepton_kinematics(
         electron_pt=electron_pt,
@@ -301,7 +304,7 @@ def reconstruct_event(bjets_mass, bjets_pt, bjets_phi, bjets_eta,
         return None
 
     bjets_combinations_idxs = np.array(list(permutations(range(len(bjets_mass)), 2)))
-    smeared_bjets_pt = np.random.normal(
+    smeared_bjets_pt = rng.normal(
         bjets_pt,
         bjets_pt * 0.14,
         (5, len(bjets_pt))
@@ -425,13 +428,28 @@ def reconstruct_event(bjets_mass, bjets_pt, bjets_phi, bjets_eta,
     p_tbar = best_b_tbar + best_l_tbar + best_nu_tbar
     idx_arr = np.array([idx])
 
+    print('-----------', idx)
+    print("Best weight: ", best_weight)
+    print("metx: ", met_x, "total_px: ", total_nu_px[best_weight_idx])
+    print("mety: ", met_y, "total_py: ", total_nu_py[best_weight_idx])
+    print("nu_t: ", best_nu_t)
+    print("nu_tbar: ", best_nu_tbar)
+    print("l_t: ", best_l_t)
+    print("l_tbar: ", best_l_tbar)
+    print("bjet_t: ", best_b_t)
+    print("bjet_tbar: ", best_b_tbar)
+    print("eta_t: ", nu_eta_t[best_weight_idx])
+    print("eta_tbar: ", nu_eta_tbar[best_weight_idx])
+    print("m_t: ", np.tile(m_t_val, (4, 1))[real_mask][best_weight_idx])
+    print('-----------\n')
+
     return (p_top, best_l_t, best_b_t, best_nu_t,
             p_tbar, best_l_tbar, best_b_tbar, best_nu_tbar, idx_arr, best_weight)
 
 
 if __name__ == "__main__":
-    sm_path = "mg5_data/SM-process_spin-ON_100k/Events/run_01_decayed_1/tag_1_delphes_events.root"
-    output_dir = "reconstructions/SM_spin-ON_100k"
+    sm_path = "../mg5_data/SM-process_spin-ON_10k/Events/run_01_decayed_1/tag_1_delphes_events.root"
+    output_dir = "../reconstructions/SM_spin-ON_10k"
     n_batches = 10
 
     print("Loading events...", end="\r")
@@ -465,11 +483,6 @@ if __name__ == "__main__":
     muon_eta = sm_events["Muon.Eta"].array()[muon_mask]
     muon_charge = sm_events["Muon.Charge"].array()[muon_mask]
 
-    # Get original quarks
-    status_mask = sm_events["Particle.Status"].array() == 22
-    t_mask = (sm_events["Particle.PID"].array() == 6) * status_mask
-    tbar_mask = (sm_events["Particle.PID"].array() == -6) * status_mask
-
     # MET for all events
     met = sm_events["MissingET.MET"].array()
     met_phi = sm_events["MissingET.Phi"].array()
@@ -480,7 +493,8 @@ if __name__ == "__main__":
         "p_tbar", "p_l_tbar", "p_b_tbar", "p_nu_tbar", "idx", "weight"
     ]
     step_size = len(muon_phi) // n_batches
-    for batch_idx in tqdm(range(n_batches)):
+    rng = np.random.default_rng(940202)
+    for batch_idx in range(n_batches):
         init_idx = batch_idx * step_size
         end_idx = init_idx + step_size
         reconstructed_events = [
@@ -499,9 +513,10 @@ if __name__ == "__main__":
                 muon_charge=muon_charge[idx],
                 met=met[idx],
                 met_phi=met_phi[idx],
-                idx=idx
+                idx=idx,
+                rng=rng
             )
-            for idx in tqdm(range(init_idx, end_idx), leave=False)
+            for idx in range(init_idx, end_idx)
         ]
 
         recos = {name: [] for name in reco_names}
