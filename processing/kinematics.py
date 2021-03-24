@@ -3,6 +3,47 @@ from typing import List
 from processing import event_selection
 
 
+def four_momentum(pt: np.ndarray, phi: np.ndarray, eta: np.ndarray,
+                  mass: np.ndarray) -> np.ndarray:
+    """Set four momentum from pt, phi, eta and mass.
+
+    :param pt: Transverse momentum.
+    :type pt: np.ndarray
+    :param phi: Azimuth angle.
+    :type phi: np.ndarray
+    :param eta: Pseudorapidity.
+    :type eta: np.ndarray
+    :param mass: Particle's mass.
+    :type mass: np.ndarray
+    :return: Four momentum in (x, y, z, E) coordinates.
+    :rtype: np.ndarray
+    """
+    pt = np.abs(pt)
+    px = pt * np.cos(phi)
+    py = pt * np.sin(phi)
+    pz = pt * np.sinh(eta)
+    E = np.sqrt(px**2 + py**2 + pz**2 + mass**2).reshape(-1, 1)
+    return np.concatenate([px, py, pz, E], axis=1)
+
+
+def neutrino_four_momentum(px: float, py: float, eta: float) -> np.ndarray:
+    """Generate neutrino's four momentum.
+
+    :param px: momentum's x component.
+    :type px: float
+    :param py: momentum's y component.
+    :type py: float
+    :param eta: Pseudorapidity.
+    :type eta: float
+    :return: Four momentum in (x, y, z, E) coordinates.
+    :rtype: np.ndarray
+    """
+    pt = np.sqrt(px**2 + py**2)
+    pz = pt * np.sinh(eta)
+    E = np.sqrt(pt ** 2 + pz ** 2)
+    return np.array([px, py, pz, E])
+
+
 def normalize_dPhi(dphi: np.ndarray) -> np.ndarray:
     """Normalize delta phi to values between 0 and pi
 

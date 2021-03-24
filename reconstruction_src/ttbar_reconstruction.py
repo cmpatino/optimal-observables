@@ -10,7 +10,7 @@ from itertools import permutations
 from tqdm import tqdm
 
 sys.path.append("..")
-from processing import event_selection
+from processing import event_selection, kinematics
 
 
 M_T = 172.5
@@ -19,47 +19,6 @@ M_ELECTRON = 0.000510998902
 M_MUON = 0.105658389
 SIGMA_X = 10.
 SIGMA_Y = 10.
-
-
-def four_momentum(pt: np.ndarray, phi: np.ndarray, eta: np.ndarray,
-                  mass: np.ndarray) -> np.ndarray:
-    """Set four momentum from pt, phi, eta and mass.
-
-    :param pt: Transverse momentum.
-    :type pt: np.ndarray
-    :param phi: Azimuth angle.
-    :type phi: np.ndarray
-    :param eta: Pseudorapidity.
-    :type eta: np.ndarray
-    :param mass: Particle's mass.
-    :type mass: np.ndarray
-    :return: Four momentum in (x, y, z, E) coordinates.
-    :rtype: np.ndarray
-    """
-    pt = np.abs(pt)
-    px = pt * np.cos(phi)
-    py = pt * np.sin(phi)
-    pz = pt * np.sinh(eta)
-    E = np.sqrt(px**2 + py**2 + pz**2 + mass**2).reshape(-1, 1)
-    return np.concatenate([px, py, pz, E], axis=1)
-
-
-def neutrino_four_momentum(px: float, py: float, eta: float) -> np.ndarray:
-    """Generate neutrino's four momentum.
-
-    :param px: momentum's x component.
-    :type px: float
-    :param py: momentum's y component.
-    :type py: float
-    :param eta: Pseudorapidity.
-    :type eta: float
-    :return: Four momentum in (x, y, z, E) coordinates.
-    :rtype: np.ndarray
-    """
-    pt = np.sqrt(px**2 + py**2)
-    pz = pt * np.sinh(eta)
-    E = np.sqrt(pt ** 2 + pz ** 2)
-    return np.array([px, py, pz, E])
 
 
 def ttbar_bjets_kinematics(smeared_bjets_pt: np.ndarray, bjets_phi: np.ndarray,
@@ -86,13 +45,13 @@ def ttbar_bjets_kinematics(smeared_bjets_pt: np.ndarray, bjets_phi: np.ndarray,
     phi_combinations = np.tile(bjets_phi[bjets_combinations_idxs], (n_smears, 1))
     eta_combinations = np.tile(bjets_eta[bjets_combinations_idxs], (n_smears, 1))
     mass_combinations = np.tile(bjets_mass[bjets_combinations_idxs], (n_smears, 1))
-    p_b_t = four_momentum(
+    p_b_t = kinematics.four_momentum(
         pt=pt_combinations[:, 0:1],
         phi=phi_combinations[:, 0:1],
         eta=eta_combinations[:, 0:1],
         mass=mass_combinations[:, 0:1]
     )
-    p_b_tbar = four_momentum(
+    p_b_tbar = kinematics.four_momentum(
         pt=pt_combinations[:, 1:],
         phi=phi_combinations[:, 1:],
         eta=eta_combinations[:, 1:],
@@ -114,7 +73,7 @@ def ttbar_leptons_kinematics(event_ls_pt: List[float], event_ls_phi: List[float]
     phi_l_t = np.array(event_ls_phi[l_idx_t]).reshape(-1, 1)
     eta_l_t = np.array(event_ls_eta[l_idx_t]).reshape(-1, 1)
     m_l_t = np.array(m_ls[l_idx_t]).reshape(-1, 1)
-    p_l_t = four_momentum(
+    p_l_t = kinematics.four_momentum(
         pt=pt_l_t,
         phi=phi_l_t,
         eta=eta_l_t,
@@ -125,7 +84,7 @@ def ttbar_leptons_kinematics(event_ls_pt: List[float], event_ls_phi: List[float]
     phi_l_tbar = np.array(event_ls_phi[l_idx_tbar]).reshape(-1, 1)
     eta_l_tbar = np.array(event_ls_eta[l_idx_tbar]).reshape(-1, 1)
     m_l_tbar = np.array(m_ls[l_idx_tbar]).reshape(-1, 1)
-    p_l_tbar = four_momentum(
+    p_l_tbar = kinematics.four_momentum(
         pt=pt_l_tbar,
         phi=phi_l_tbar,
         eta=eta_l_tbar,
@@ -411,14 +370,14 @@ def reconstruct_event(bjets_mass, bjets_pt, bjets_phi, bjets_eta,
     best_weight = np.real(weights[best_weight_idx])
     best_b_t = p_b_t[best_weight_idx]
     best_l_t = p_l_t[best_weight_idx]
-    best_nu_t = neutrino_four_momentum(
+    best_nu_t = kinematics.neutrino_four_momentum(
         px=np.real(nu_t_px[best_weight_idx]),
         py=np.real(nu_t_py[best_weight_idx]),
         eta=nu_eta_t[best_weight_idx]
     )
     best_b_tbar = p_b_tbar[best_weight_idx]
     best_l_tbar = p_l_tbar[best_weight_idx]
-    best_nu_tbar = neutrino_four_momentum(
+    best_nu_tbar = kinematics.neutrino_four_momentum(
         px=np.real(nu_tbar_px[best_weight_idx]),
         py=np.real(nu_tbar_py[best_weight_idx]),
         eta=nu_eta_tbar[best_weight_idx]
@@ -448,8 +407,8 @@ def reconstruct_event(bjets_mass, bjets_pt, bjets_phi, bjets_eta,
 
 
 if __name__ == "__main__":
-    sm_path = "../mg5_data/SM-process_spin-ON_10k/Events/run_01_decayed_1/tag_1_delphes_events.root"
-    output_dir = "../reconstructions/SM_spin-ON_10k"
+    sm_path = "../mg5_data/SM-process_spin-OFF_100k/Events/run_01_decayed_1/tag_1_delphes_events.root"
+    output_dir = "../reconstructions/SM_spin-OFF_100k"
     n_batches = 10
 
     print("Loading events...", end="\r")
