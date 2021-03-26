@@ -5,25 +5,28 @@ import numpy as np
 import jax.numpy as jnp
 
 from jax import jit
-from typing import List, Tuple
+from typing import Union, Tuple
 from itertools import permutations
 from tqdm import tqdm
 
 sys.path.append("..")
-from processing import event_selection, kinematics
+from processing import event_selection, kinematics  # noqa: E402
 
 
-M_T = 172.5
 M_W = 80.4
 M_ELECTRON = 0.000510998902
 M_MUON = 0.105658389
-SIGMA_X = 10.
-SIGMA_Y = 10.
+SIGMA_X = 10.0
+SIGMA_Y = 10.0
 
 
-def ttbar_bjets_kinematics(smeared_bjets_pt: np.ndarray, bjets_phi: np.ndarray,
-                           bjets_eta: np.ndarray, bjets_mass: np.ndarray,
-                           bjets_combinations_idxs: np.ndarray) -> Tuple[np.ndarray]:
+def ttbar_bjets_kinematics(
+    smeared_bjets_pt: np.ndarray,
+    bjets_phi: np.ndarray,
+    bjets_eta: np.ndarray,
+    bjets_mass: np.ndarray,
+    bjets_combinations_idxs: np.ndarray,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Create four momenta for b-jets from possible jet permutations. pt comes with
     extra entries due to smearing for the reconstruction.
 
@@ -49,20 +52,39 @@ def ttbar_bjets_kinematics(smeared_bjets_pt: np.ndarray, bjets_phi: np.ndarray,
         pt=pt_combinations[:, 0:1],
         phi=phi_combinations[:, 0:1],
         eta=eta_combinations[:, 0:1],
-        mass=mass_combinations[:, 0:1]
+        mass=mass_combinations[:, 0:1],
     )
     p_b_tbar = kinematics.four_momentum(
         pt=pt_combinations[:, 1:],
         phi=phi_combinations[:, 1:],
         eta=eta_combinations[:, 1:],
-        mass=mass_combinations[:, 1:]
+        mass=mass_combinations[:, 1:],
     )
     return p_b_t, p_b_tbar, mass_combinations[:, 0:1], mass_combinations[:, 1:]
 
 
-def ttbar_leptons_kinematics(event_ls_pt: List[float], event_ls_phi: List[float],
-                             event_ls_eta: List[float], event_ls_charge: List[float],
-                             m_ls: List[float]) -> Tuple[Tuple[float], Tuple[float], float, float]:
+def ttbar_leptons_kinematics(
+    event_ls_pt: np.ndarray,
+    event_ls_phi: np.ndarray,
+    event_ls_eta: np.ndarray,
+    event_ls_charge: np.ndarray,
+    m_ls: np.ndarray,
+) -> Tuple[np.ndarray, np.ndarray, float, float]:
+    """Assign lepton to parent quark using leptons' charge.
+
+    :param event_ls_pt: PT of leptons in the event.
+    :type event_ls_pt: np.ndarray
+    :param event_ls_phi: Phi of leptons in the event.
+    :type event_ls_phi: np.ndarray
+    :param event_ls_eta: Eta of leptons in the event.
+    :type event_ls_eta: np.ndarray
+    :param event_ls_charge: Charge of lepton in the event.
+    :type event_ls_charge: np.ndarray
+    :param m_ls: Mass of leptons in the event.
+    :type m_ls: np.ndarray
+    :return: Leptons' four-momenta and masses assigned to parent quark.
+    :rtype: Tuple[Tuple[float], Tuple[float], float, float]
+    """
     if event_ls_charge[0] == 1:
         l_idx_t = 0
         l_idx_tbar = 1
@@ -73,36 +95,46 @@ def ttbar_leptons_kinematics(event_ls_pt: List[float], event_ls_phi: List[float]
     phi_l_t = np.array(event_ls_phi[l_idx_t]).reshape(-1, 1)
     eta_l_t = np.array(event_ls_eta[l_idx_t]).reshape(-1, 1)
     m_l_t = np.array(m_ls[l_idx_t]).reshape(-1, 1)
-    p_l_t = kinematics.four_momentum(
-        pt=pt_l_t,
-        phi=phi_l_t,
-        eta=eta_l_t,
-        mass=m_l_t
-    )
+    p_l_t = kinematics.four_momentum(pt=pt_l_t, phi=phi_l_t, eta=eta_l_t, mass=m_l_t)
 
     pt_l_tbar = np.array(event_ls_pt[l_idx_tbar]).reshape(-1, 1)
     phi_l_tbar = np.array(event_ls_phi[l_idx_tbar]).reshape(-1, 1)
     eta_l_tbar = np.array(event_ls_eta[l_idx_tbar]).reshape(-1, 1)
     m_l_tbar = np.array(m_ls[l_idx_tbar]).reshape(-1, 1)
     p_l_tbar = kinematics.four_momentum(
-        pt=pt_l_tbar,
-        phi=phi_l_tbar,
-        eta=eta_l_tbar,
-        mass=m_l_tbar
+        pt=pt_l_tbar, phi=phi_l_tbar, eta=eta_l_tbar, mass=m_l_tbar
     )
 
     return p_l_t, p_l_tbar, m_l_t, m_l_tbar
 
 
 def scalar_product(p1: jnp.DeviceArray, p2: jnp.DeviceArray) -> jnp.DeviceArray:
+    """Calculate four-vector scalar product with (-,-,-,+) metric.
+
+    :param p1: First four-vector.
+    :type p1: jnp.DeviceArray
+    :param p2: Second four-vector.
+    :type p2: jnp.DeviceArray
+    :return: Scalar product of two four-vectors.
+    :rtype: jnp.DeviceArray
+    """
     return p1[:, 3:] * p2[:, 3:] - jnp.sum(p1[:, :3] * p2[:, :3], axis=1, keepdims=True)
 
 
 def solve_quadratic_equation(
-    a: jnp.DeviceArray,
-    b: jnp.DeviceArray,
-    c: jnp.DeviceArray
+    a: jnp.DeviceArray, b: jnp.DeviceArray, c: jnp.DeviceArray
 ) -> jnp.DeviceArray:
+    """Solve quadratic equation.
+
+    :param a: Coefficient of x**2.
+    :type a: jnp.DeviceArray
+    :param b: Coefficient of x**1.
+    :type b: jnp.DeviceArray
+    :param c: Coeffiecient of x**0.
+    :type c: jnp.DeviceArray
+    :return: Solutions for quadratic equation.
+    :rtype: jnp.DeviceArray
+    """
     a_c = a.astype(jnp.complex64)
     b_c = b.astype(jnp.complex64)
     c_c = c.astype(jnp.complex64)
@@ -113,9 +145,31 @@ def solve_quadratic_equation(
     return jnp.concatenate([sol1, sol2], axis=1)
 
 
-def solve_p_nu(eta: jnp.DeviceArray, p_l: jnp.DeviceArray, p_b: jnp.DeviceArray,
-               m_t: jnp.DeviceArray, m_b: jnp.DeviceArray, m_w=M_W) -> jnp.DeviceArray:
+def solve_p_nu(
+    eta: jnp.DeviceArray,
+    p_l: jnp.DeviceArray,
+    p_b: jnp.DeviceArray,
+    m_t: jnp.DeviceArray,
+    m_b: jnp.DeviceArray,
+    m_w=M_W,
+) -> Tuple[jnp.DeviceArray, jnp.DeviceArray, jnp.DeviceArray, jnp.DeviceArray]:
+    """Get possible solutions for neutrino's px and py.
 
+    :param eta: Neutrino's eta.
+    :type eta: jnp.DeviceArray
+    :param p_l: Lepton's four-momentum.
+    :type p_l: jnp.DeviceArray
+    :param p_b: b-jet's four-momentum.
+    :type p_b: jnp.DeviceArray
+    :param m_t: Top's mass value.
+    :type m_t: jnp.DeviceArray
+    :param m_b: Bottom's mass value.
+    :type m_b: jnp.DeviceArray
+    :param m_w: W's mass value, defaults to M_W
+    :type m_w: float, optional
+    :return: Solutions for neutrino's px and py.
+    :rtype: Tuple[jnp.DeviceArray, jnp.DeviceArray, jnp.DeviceArray, jnp.DeviceArray]
+    """
     E_l_prime = (p_l[:, 3:] * jnp.cosh(eta)) - (p_l[:, 2:3] * jnp.sinh(eta))
     E_b_prime = (p_b[:, 3:] * jnp.cosh(eta)) - (p_b[:, 2:3] * jnp.sinh(eta))
 
@@ -142,8 +196,25 @@ def solve_p_nu(eta: jnp.DeviceArray, p_l: jnp.DeviceArray, p_b: jnp.DeviceArray,
     return px1, px2, py1, py2
 
 
-def solution_weight(met_x: np.ndarray, met_y: np.ndarray,
-                    neutrino_px: np.ndarray, neutrino_py: np.ndarray) -> np.ndarray:
+def solution_weight(
+    met_x: np.ndarray,
+    met_y: np.ndarray,
+    neutrino_px: np.ndarray,
+    neutrino_py: np.ndarray,
+) -> np.ndarray:
+    """Calculate weight for neutrino's solution.
+
+    :param met_x: Missing ET in x direction in event.
+    :type met_x: np.ndarray
+    :param met_y: Missing ET in y direction in event.
+    :type met_y: np.ndarray
+    :param neutrino_px: Total neutrino px in the event.
+    :type neutrino_px: np.ndarray
+    :param neutrino_py: Total neutrino py in the event.
+    :type neutrino_py: np.ndarray
+    :return: Solution's weight.
+    :rtype: np.ndarray
+    """
     dx = met_x - neutrino_px
     dy = met_y - neutrino_py
     weight_x = np.exp(-(dx ** 2) / (2 * SIGMA_X ** 2))
@@ -152,15 +223,43 @@ def solution_weight(met_x: np.ndarray, met_y: np.ndarray,
 
 
 @jit
-def get_neutrino_momentum(nu_eta_t, p_l_t, p_b_t, m_b_t,
-                          nu_eta_tbar, p_l_tbar, p_b_tbar, m_b_tbar,
-                          m_t_val) -> Tuple[np.ndarray]:
+def get_neutrino_momentum(
+    nu_eta_t: jnp.DeviceArray,
+    p_l_t: jnp.DeviceArray,
+    p_b_t: jnp.DeviceArray,
+    m_b_t: jnp.DeviceArray,
+    nu_eta_tbar: jnp.DeviceArray,
+    p_l_tbar: jnp.DeviceArray,
+    p_b_tbar: jnp.DeviceArray,
+    m_b_tbar: jnp.DeviceArray,
+    m_t_val: jnp.DeviceArray,
+) -> Tuple[jnp.DeviceArray, jnp.DeviceArray, jnp.DeviceArray, jnp.DeviceArray]:
+    """Get neutrino px and py solutions for neutrinos assigned to top and
+    anti-top quarks.
+
+    :param nu_eta_t: Eta for neutrino assigned to top quark.
+    :type nu_eta_t: jnp.DeviceArray
+    :param p_l_t: Four-momentum of lepton assigned to top quark.
+    :type p_l_t: jnp.DeviceArray
+    :param p_b_t: Four-momentum of b-jet assigned to top quark.
+    :type p_b_t: jnp.DeviceArray
+    :param m_b_t: Mass of b-jet assigned to top quark.
+    :type m_b_t: jnp.DeviceArray
+    :param nu_eta_tbar: Eta for neutrino assigned to anti-top quark.
+    :type nu_eta_tbar: jnp.DeviceArray
+    :param p_l_tbar: Four-momentum of lepton assigned to anti-top quark.
+    :type p_l_tbar: jnp.DeviceArray
+    :param p_b_tbar: Four-momentum of b-jet assigned to anti-top quark.
+    :type p_b_tbar: jnp.DeviceArray
+    :param m_b_tbar: Mass of b-jet assigned to anti-top quark.
+    :type m_b_tbar: jnp.DeviceArray
+    :param m_t_val: Top quark's mass.
+    :type m_t_val: jnp.DeviceArray
+    :return: Solutions for neutrino's px and py assigned to top and anti-top quarks.
+    :rtype: Tuple[jnp.DeviceArray, jnp.DeviceArray, jnp.DeviceArray, jnp.DeviceArray]
+    """
     nu_t_px1, nu_t_px2, nu_t_py1, nu_t_py2 = solve_p_nu(
-        eta=nu_eta_t,
-        p_l=p_l_t,
-        p_b=p_b_t,
-        m_t=m_t_val,
-        m_b=m_b_t
+        eta=nu_eta_t, p_l=p_l_t, p_b=p_b_t, m_t=m_t_val, m_b=m_b_t
     )
 
     nu_tbar_px1, nu_tbar_px2, nu_tbar_py1, nu_tbar_py2 = solve_p_nu(
@@ -174,15 +273,47 @@ def get_neutrino_momentum(nu_eta_t, p_l_t, p_b_t, m_b_t,
     nu_t_px = jnp.concatenate([nu_t_px1, nu_t_px1, nu_t_px2, nu_t_px2], axis=0)
     nu_t_py = jnp.concatenate([nu_t_py1, nu_t_py1, nu_t_py2, nu_t_py2], axis=0)
 
-    nu_tbar_px = jnp.concatenate([nu_tbar_px1, nu_tbar_px2, nu_tbar_px1, nu_tbar_px2], axis=0)
-    nu_tbar_py = jnp.concatenate([nu_tbar_py1, nu_tbar_py2, nu_tbar_py1, nu_tbar_py2], axis=0)
+    nu_tbar_px = jnp.concatenate(
+        [nu_tbar_px1, nu_tbar_px2, nu_tbar_px1, nu_tbar_px2], axis=0
+    )
+    nu_tbar_py = jnp.concatenate(
+        [nu_tbar_py1, nu_tbar_py2, nu_tbar_py1, nu_tbar_py2], axis=0
+    )
     return nu_t_px, nu_t_py, nu_tbar_px, nu_tbar_py
 
 
-def lepton_kinematics(electron_pt: np.ndarray, electron_phi: np.ndarray, electron_eta: np.ndarray,
-                      electron_charge: np.ndarray, muon_pt: np.ndarray, muon_phi: np.ndarray,
-                      muon_eta: np.ndarray, muon_charge: np.ndarray
-                      ) -> Tuple[Tuple[float], Tuple[float], float, float]:
+def lepton_kinematics(
+    electron_pt: np.ndarray,
+    electron_phi: np.ndarray,
+    electron_eta: np.ndarray,
+    electron_charge: np.ndarray,
+    muon_pt: np.ndarray,
+    muon_phi: np.ndarray,
+    muon_eta: np.ndarray,
+    muon_charge: np.ndarray,
+) -> Tuple[np.ndarray, np.ndarray, float, float]:
+    """Assign lepton four-momenta to top and anti-top quarks using combination
+    of muons and electrons in the event.
+
+    :param electron_pt: PT of electrons in the event.
+    :type electron_pt: np.ndarray
+    :param electron_phi: Phi of electrons in the event.
+    :type electron_phi: np.ndarray
+    :param electron_eta: Eta of electrons in the event.
+    :type electron_eta: np.ndarray
+    :param electron_charge: Charges of electrons in the event.
+    :type electron_charge: np.ndarray
+    :param muon_pt: PT of muons in the event.
+    :type muon_pt: np.ndarray
+    :param muon_phi: Phi of muons in the event.
+    :type muon_phi: np.ndarray
+    :param muon_eta: Eta of muons in the event.
+    :type muon_eta: np.ndarray
+    :param muon_charge: Charges of muons in the event.
+    :type muon_charge: np.ndarray
+    :return: Leptons' four-momenta and masses assigned to parent top and anti-top quarks.
+    :rtype: Tuple[np.ndarray, np.ndarray, float, float]
+    """
     if len(electron_pt) + len(muon_pt) < 2:
         return None, None, None, None
     n_electrons = len(electron_pt)
@@ -197,7 +328,7 @@ def lepton_kinematics(electron_pt: np.ndarray, electron_phi: np.ndarray, electro
             event_ls_phi=electron_phi,
             event_ls_eta=electron_eta,
             event_ls_charge=electron_charge,
-            m_ls=m_ls
+            m_ls=m_ls,
         )
         return p_l_t, p_l_tbar, m_l_t, m_l_tbar
 
@@ -211,7 +342,7 @@ def lepton_kinematics(electron_pt: np.ndarray, electron_phi: np.ndarray, electro
             event_ls_phi=muon_phi,
             event_ls_eta=muon_eta,
             event_ls_charge=muon_charge,
-            m_ls=m_ls
+            m_ls=m_ls,
         )
         return p_l_t, p_l_tbar, m_l_t, m_l_tbar
 
@@ -229,23 +360,85 @@ def lepton_kinematics(electron_pt: np.ndarray, electron_phi: np.ndarray, electro
             event_ls_phi=event_ls_phi,
             event_ls_eta=event_ls_eta,
             event_ls_charge=event_ls_charge,
-            m_ls=m_ls
+            m_ls=m_ls,
         )
         return p_l_t, p_l_tbar, m_l_t, m_l_tbar
 
     else:
         return None, None, None, None
-        raise ValueError(
-            "Event does not have a valid combination of leptons: "
-            f"{n_electrons} electrons and {n_muons} muons in the event."
-        )
 
 
-def reconstruct_event(bjets_mass, bjets_pt, bjets_phi, bjets_eta,
-                      electron_pt, electron_phi, electron_eta, electron_charge,
-                      muon_pt, muon_phi, muon_eta, muon_charge,
-                      met, met_phi, idx, rng):
+def reconstruct_event(
+    bjets_mass: np.ndarray,
+    bjets_pt: np.ndarray,
+    bjets_phi: np.ndarray,
+    bjets_eta: np.ndarray,
+    electron_pt: np.ndarray,
+    electron_phi: np.ndarray,
+    electron_eta: np.ndarray,
+    electron_charge: np.ndarray,
+    muon_pt: np.ndarray,
+    muon_phi: np.ndarray,
+    muon_eta: np.ndarray,
+    muon_charge: np.ndarray,
+    met: np.ndarray,
+    met_phi: np.ndarray,
+    idx: int,
+    rng: np.random.Generator,
+) -> Union[
+    Tuple[
+        np.ndarray,
+        np.ndarray,
+        np.ndarray,
+        np.ndarray,
+        np.ndarray,
+        np.ndarray,
+        np.ndarray,
+        np.ndarray,
+        np.ndarray,
+        np.ndarray,
+    ],
+    None,
+]:
+    """Reconstruct neutrinos in the event.
 
+    :param bjets_mass: Mass of b-jets in event.
+    :type bjets_mass: np.ndarray
+    :param bjets_pt: PT of b-jets in event.
+    :type bjets_pt: np.ndarray
+    :param bjets_phi: Phi of b-jets in event.
+    :type bjets_phi: np.ndarray
+    :param bjets_eta: Eta of b-jets in event.
+    :type bjets_eta: np.ndarray
+    :param electron_pt: PT of electrons in event.
+    :type electron_pt: np.ndarray
+    :param electron_phi: Phi of electrons in event.
+    :type electron_phi: np.ndarray
+    :param electron_eta: Eta of electrons in event.
+    :type electron_eta: np.ndarray
+    :param electron_charge: Charges of electrons in event.
+    :type electron_charge: np.ndarray
+    :param muon_pt: PT of muons in event.
+    :type muon_pt: np.ndarray
+    :param muon_phi: Phi of muons in event.
+    :type muon_phi: np.ndarray
+    :param muon_eta: Eta of muons in event.
+    :type muon_eta: np.ndarray
+    :param muon_charge: Charge of muons in event.
+    :type muon_charge: np.ndarray
+    :param met: MET in event.
+    :type met: np.ndarray
+    :param met_phi: Phi of MET in event.
+    :type met_phi: np.ndarray
+    :param idx: Event index.
+    :type idx: int
+    :param rng: Numpy's random number generator.
+    :type rng: np.random.Generator
+    :return: Particles in the event with idx and reconstruction weight. Return
+             None if event doesn't meet selection criteria.
+    :rtype: Union[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray,
+                 np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray], None]
+    """
     p_l_t, p_l_tbar, m_l_t, m_l_tbar = lepton_kinematics(
         electron_pt=electron_pt,
         electron_phi=electron_phi,
@@ -254,7 +447,7 @@ def reconstruct_event(bjets_mass, bjets_pt, bjets_phi, bjets_eta,
         muon_pt=muon_pt,
         muon_phi=muon_phi,
         muon_eta=muon_eta,
-        muon_charge=muon_charge
+        muon_charge=muon_charge,
     )
     if p_l_t is None:
         return None
@@ -263,17 +456,13 @@ def reconstruct_event(bjets_mass, bjets_pt, bjets_phi, bjets_eta,
         return None
 
     bjets_combinations_idxs = np.array(list(permutations(range(len(bjets_mass)), 2)))
-    smeared_bjets_pt = rng.normal(
-        bjets_pt,
-        bjets_pt * 0.14,
-        (5, len(bjets_pt))
-    )
+    smeared_bjets_pt = rng.normal(bjets_pt, bjets_pt * 0.14, (5, len(bjets_pt)))
     p_b_t, p_b_tbar, m_b_t, m_b_tbar = ttbar_bjets_kinematics(
         smeared_bjets_pt=smeared_bjets_pt,
         bjets_phi=bjets_phi,
         bjets_eta=bjets_eta,
         bjets_mass=bjets_mass,
-        bjets_combinations_idxs=bjets_combinations_idxs
+        bjets_combinations_idxs=bjets_combinations_idxs,
     )
 
     met_x = (met * np.cos(met_phi))[0]
@@ -283,8 +472,9 @@ def reconstruct_event(bjets_mass, bjets_pt, bjets_phi, bjets_eta,
     eta_range = np.linspace(-5, 5, 51)
     eta_grid = np.array(np.meshgrid(eta_range, eta_range)).T.reshape(-1, 2)
 
-    eta_vectorized_mask = [i for i in range(eta_grid.shape[0])
-                           for j in range(p_b_t.shape[0])]
+    eta_vectorized_mask = [
+        i for i in range(eta_grid.shape[0]) for j in range(p_b_t.shape[0])
+    ]
     nu_etas = eta_grid[eta_vectorized_mask]
 
     p_l_t = np.tile(p_l_t, (eta_grid.shape[0] * p_b_t.shape[0], 1))
@@ -299,8 +489,9 @@ def reconstruct_event(bjets_mass, bjets_pt, bjets_phi, bjets_eta,
 
     # Vectorize top mass for loop
     m_t_search = np.linspace(171, 174, 7).reshape(-1, 1)
-    mass_vectorized_mask = [i for i in range(m_t_search.shape[0])
-                            for j in range(p_b_t.shape[0])]
+    mass_vectorized_mask = [
+        i for i in range(m_t_search.shape[0]) for j in range(p_b_t.shape[0])
+    ]
     m_t_val = m_t_search[mass_vectorized_mask]
 
     p_l_t = np.tile(p_l_t, (m_t_search.shape[0], 1))
@@ -327,7 +518,7 @@ def reconstruct_event(bjets_mass, bjets_pt, bjets_phi, bjets_eta,
         p_l_tbar=jnp.array(p_l_tbar),
         p_b_tbar=jnp.array(p_b_tbar),
         m_b_tbar=jnp.array(m_b_tbar),
-        m_t_val=jnp.array(m_t_val)
+        m_t_val=jnp.array(m_t_val),
     )
     nu_t_px = np.array(nu_t_px)
     nu_t_py = np.array(nu_t_py)
@@ -356,10 +547,7 @@ def reconstruct_event(bjets_mass, bjets_pt, bjets_phi, bjets_eta,
     total_nu_py = total_nu_py[real_mask]
 
     weights = solution_weight(
-        met_x=met_x,
-        met_y=met_y,
-        neutrino_px=total_nu_px,
-        neutrino_py=total_nu_py
+        met_x=met_x, met_y=met_y, neutrino_px=total_nu_px, neutrino_py=total_nu_py
     )
     if len(weights) == 0:
         return None
@@ -373,42 +561,46 @@ def reconstruct_event(bjets_mass, bjets_pt, bjets_phi, bjets_eta,
     best_nu_t = kinematics.neutrino_four_momentum(
         px=np.real(nu_t_px[best_weight_idx]),
         py=np.real(nu_t_py[best_weight_idx]),
-        eta=nu_eta_t[best_weight_idx]
+        eta=nu_eta_t[best_weight_idx],
     )
     best_b_tbar = p_b_tbar[best_weight_idx]
     best_l_tbar = p_l_tbar[best_weight_idx]
     best_nu_tbar = kinematics.neutrino_four_momentum(
         px=np.real(nu_tbar_px[best_weight_idx]),
         py=np.real(nu_tbar_py[best_weight_idx]),
-        eta=nu_eta_tbar[best_weight_idx]
+        eta=nu_eta_tbar[best_weight_idx],
     )
 
     p_top = best_b_t + best_l_t + best_nu_t
     p_tbar = best_b_tbar + best_l_tbar + best_nu_tbar
     idx_arr = np.array([idx])
 
-    print('-----------', idx)
-    print("Best weight: ", best_weight)
-    print("metx: ", met_x, "total_px: ", total_nu_px[best_weight_idx])
-    print("mety: ", met_y, "total_py: ", total_nu_py[best_weight_idx])
-    print("nu_t: ", best_nu_t)
-    print("nu_tbar: ", best_nu_tbar)
-    print("l_t: ", best_l_t)
-    print("l_tbar: ", best_l_tbar)
-    print("bjet_t: ", best_b_t)
-    print("bjet_tbar: ", best_b_tbar)
-    print("eta_t: ", nu_eta_t[best_weight_idx])
-    print("eta_tbar: ", nu_eta_tbar[best_weight_idx])
-    print("m_t: ", np.tile(m_t_val, (4, 1))[real_mask][best_weight_idx])
-    print('-----------\n')
-
-    return (p_top, best_l_t, best_b_t, best_nu_t,
-            p_tbar, best_l_tbar, best_b_tbar, best_nu_tbar, idx_arr, best_weight)
+    return (
+        p_top,
+        best_l_t,
+        best_b_t,
+        best_nu_t,
+        p_tbar,
+        best_l_tbar,
+        best_b_tbar,
+        best_nu_tbar,
+        idx_arr,
+        best_weight,
+    )
 
 
 if __name__ == "__main__":
-    sm_path = "../mg5_data/SM-process_spin-OFF_100k/Events/run_01_decayed_1/tag_1_delphes_events.root"
-    output_dir = "../reconstructions/SM_spin-OFF_100k"
+    process_name = "SM_spin-OFF_100k"
+    random_seed = 0
+
+    sm_path = os.path.join(
+        "../mg5_data",
+        f"{process_name}_{random_seed}",
+        "Events/run_01_decayed_1/tag_1_delphes_events.root"
+    )
+    output_dir = f"../reconstructed_events/{process_name}_{random_seed}"
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
     n_batches = 10
 
     print("Loading events...", end="\r")
@@ -448,12 +640,20 @@ if __name__ == "__main__":
     print("Applying selection criteria...Done")
 
     reco_names = [
-        "p_top", "p_l_t", "p_b_t", "p_nu_t",
-        "p_tbar", "p_l_tbar", "p_b_tbar", "p_nu_tbar", "idx", "weight"
+        "p_top",
+        "p_l_t",
+        "p_b_t",
+        "p_nu_t",
+        "p_tbar",
+        "p_l_tbar",
+        "p_b_tbar",
+        "p_nu_tbar",
+        "idx",
+        "weight",
     ]
     step_size = len(muon_phi) // n_batches
-    rng = np.random.default_rng(940202)
-    for batch_idx in range(n_batches):
+    rng = np.random.default_rng(random_seed)
+    for batch_idx in tqdm(range(n_batches)):
         init_idx = batch_idx * step_size
         end_idx = init_idx + step_size
         reconstructed_events = [
@@ -473,9 +673,9 @@ if __name__ == "__main__":
                 met=met[idx],
                 met_phi=met_phi[idx],
                 idx=idx,
-                rng=rng
+                rng=rng,
             )
-            for idx in range(init_idx, end_idx)
+            for idx in tqdm(range(init_idx, end_idx), leave=False)
         ]
 
         recos = {name: [] for name in reco_names}
@@ -486,9 +686,13 @@ if __name__ == "__main__":
             for name, reco_p in zip(reco_names, event):
                 recos[name].append(reco_p.reshape(1, -1))
 
-        reco_arrays = {name: np.concatenate(reco_list, axis=0) for name, reco_list in recos.items()}
+        reco_arrays = {
+            name: np.concatenate(reco_list, axis=0) for name, reco_list in recos.items()
+        }
 
         for name, p_array in reco_arrays.items():
-            with open(os.path.join(output_dir, f"{name}_batch_{batch_idx}.npy"), "wb") as f:
+            with open(
+                os.path.join(output_dir, f"{name}_batch_{batch_idx}.npy"), "wb"
+            ) as f:
                 np.save(f, p_array)
         del recos, reco_arrays, reconstructed_events

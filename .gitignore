@@ -143,4 +143,4 @@ hep-docker/*.py
 hep-docker/generated-data/
 
 # Outputs
-reconstructions/
+reconstructed_events/
