@@ -1,5 +1,6 @@
 import numpy as np
 from awkward.array.jagged import JaggedArray
+from processing.kinematics import normalize_dPhi
 
 
 def select_jet(events) -> JaggedArray:
@@ -28,12 +29,12 @@ def select_jet(events) -> JaggedArray:
         electron_dR_event_mask = np.ones_like(jet_phi_idx, dtype=int)
         muon_dR_event_mask = np.ones_like(jet_phi_idx, dtype=int)
         for elec_idx in range(len(electron_phi[event_idx])):
-            dPhi = jet_phi_idx - electron_phi[event_idx][elec_idx]
+            dPhi = normalize_dPhi(jet_phi_idx - electron_phi[event_idx][elec_idx])
             dEta = jet_eta_idx - electron_eta[event_idx][elec_idx]
             dR = np.sqrt(dPhi**2 + dEta**2)
             electron_dR_event_mask *= (dR > 0.2)
         for muon_idx in range(len(muon_phi[event_idx])):
-            dPhi = jet_phi_idx - muon_phi[event_idx][muon_idx]
+            dPhi = normalize_dPhi(jet_phi_idx - muon_phi[event_idx][muon_idx])
             dEta = jet_eta_idx - muon_eta[event_idx][muon_idx]
             dR = np.sqrt(dPhi**2 + dEta**2)
             muon_dR_event_mask *= (dR > 0.4)
@@ -75,7 +76,7 @@ def select_electron(events) -> JaggedArray:
             jet_mass_idx = jet_mass[event_idx][jet_idx]
             jet_pt_idx = jet_pt[event_idx][jet_idx]
             jet_rapidity = jet_eta_idx - (np.tanh(jet_eta_idx)/2)*(jet_mass_idx/jet_pt_idx)**2
-            dPhi = electron_phi_idx - jet_phi[event_idx][jet_idx]
+            dPhi = normalize_dPhi(electron_phi_idx - jet_phi[event_idx][jet_idx])
             dEta = electron_eta_idx - jet_rapidity
             dR = np.sqrt(dPhi**2 + dEta**2)
             jet_dR_event_mask *= (dR > 0.4)
@@ -107,7 +108,7 @@ def select_muon(events) -> JaggedArray:
         muon_eta_idx = muon_eta[event_idx]
         jet_dR_event_mask = np.ones_like(muon_phi_idx, dtype=int)
         for jet_idx in range(len(jet_phi[event_idx])):
-            dPhi = muon_phi_idx - jet_phi[event_idx][jet_idx]
+            dPhi = normalize_dPhi(muon_phi_idx - jet_phi[event_idx][jet_idx])
             dEta = muon_eta_idx - jet_eta[event_idx][jet_idx]
             dR = np.sqrt(dPhi**2 + dEta**2)
             jet_dR_event_mask *= (dR > 0.4)
