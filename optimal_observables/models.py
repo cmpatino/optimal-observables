@@ -13,16 +13,16 @@ class FullyConnected(pl.LightningModule):
         self.save_hyperparameters()
 
         self.input = nn.Linear(
-            in_features=hparams["input_size"],
-            out_features=hparams["hidden1_size"]
+            in_features=hparams.input_size,
+            out_features=hparams.hidden1_size
         )
         self.hidden1 = nn.Linear(
-            in_features=hparams["hidden1_size"],
-            out_features=hparams["hidden2_size"]
+            in_features=hparams.hidden1_size,
+            out_features=hparams.hidden2_size
         )
-        self.hidden2 = nn.Linear(
-            in_features=hparams["hidden2_size"],
-            out_features=hparams["output_size"]
+        self.output = nn.Linear(
+            in_features=hparams.hidden2_size,
+            out_features=hparams.output_size
         )
 
     def forward(self, x):
@@ -30,7 +30,7 @@ class FullyConnected(pl.LightningModule):
         x = F.leaky_relu(x)
         x = self.hidden1(x)
         x = F.leaky_relu(x)
-        x = self.hidden2(x)
+        x = self.output(x)
         return x
 
     def configure_optimizers(self):
@@ -40,14 +40,14 @@ class FullyConnected(pl.LightningModule):
     def training_step(self, batch, batch_nb):
         x, y = batch
         y_pred = self(x)
-        loss = self.criterion(y, y_pred)
+        loss = F.mse_loss(y, y_pred)
         self.log("train_loss", loss)
         return loss
 
     def validation_step(self, batch, batch_nb):
         x, y = batch
         y_pred = self(x)
-        loss = self.criterion(y, y_pred)
+        loss = F.mse_loss(y, y_pred)
         self.log("val_loss", loss)
         return loss
 
@@ -55,8 +55,6 @@ class FullyConnected(pl.LightningModule):
     def add_model_specific_args(parent_parser):
         parser = ArgumentParser(parents=[parent_parser], add_help=False)
         parser.add_argument("--lr", type=float, default=1e-3)
-        parser.add_argument("--input_size", type=int, default=6)
         parser.add_argument("--hidden1_size", type=int, default=250)
         parser.add_argument("--hidden2_size", type=int, default=100)
-        parser.add_argument("--output_size", type=int, default=20000)
         return parser
