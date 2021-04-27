@@ -1,6 +1,7 @@
 import os
 import numpy as np
 
+from typing import List
 
 from torch.utils.data import Dataset
 
@@ -10,7 +11,7 @@ import observables
 class ConditionedObservablesFC(Dataset):
     def __init__(
         self,
-        reconstructions_path: str,
+        reconstructions_paths: List[str],
         low_exp: float,
         high_exp: float,
         n_exp: int,
@@ -32,15 +33,16 @@ class ConditionedObservablesFC(Dataset):
         recos = dict()
 
         batches = {name: [] for name in reco_names}
-        for batch_idx in range(10):
-            for name in reco_names:
-                batches[name].append(
-                    np.load(
-                        os.path.join(
-                            reconstructions_path, f"{name}_batch_{batch_idx}.npy"
+        for reconstructions_path in reconstructions_paths:
+            for batch_idx in range(10):
+                for name in reco_names:
+                    batches[name].append(
+                        np.load(
+                            os.path.join(
+                                reconstructions_path, f"{name}_batch_{batch_idx}.npy"
+                            )
                         )
                     )
-                )
         recos = {
             name: np.concatenate(batches, axis=0) for name, batches in batches.items()
         }

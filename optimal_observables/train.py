@@ -6,9 +6,12 @@ from torch.utils.data import DataLoader
 from data import ConditionedObservablesFC
 from models import FullyConnected
 
-
+reco_paths = [
+    "../reconstructed_events/SM_spin-ON_100k_0",
+    "../reconstructed_events/SM_spin-ON_100k_20210425"
+]
 train_dataset = ConditionedObservablesFC(
-    reconstructions_path="../reconstructed_events/SM_spin-ON_100k_0",
+    reconstructions_paths=reco_paths,
     low_exp=-5,
     high_exp=5,
     n_exp=1000,
