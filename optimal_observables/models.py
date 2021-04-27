@@ -7,7 +7,7 @@ from argparse import ArgumentParser
 
 
 class FullyConnected(pl.LightningModule):
-    def __init__(self, hparams):
+    def __init__(self, hparams, biases):
         super(FullyConnected, self).__init__()
         self.hparams = hparams
         self.save_hyperparameters()
@@ -24,6 +24,7 @@ class FullyConnected(pl.LightningModule):
             in_features=hparams.hidden2_size,
             out_features=hparams.output_size
         )
+        self.output.bias = torch.nn.Parameter(torch.tensor(biases))
 
     def forward(self, x):
         x = self.input(x)
@@ -54,7 +55,7 @@ class FullyConnected(pl.LightningModule):
     @staticmethod
     def add_model_specific_args(parent_parser):
         parser = ArgumentParser(parents=[parent_parser], add_help=False)
-        parser.add_argument("--lr", type=float, default=1e-3)
+        parser.add_argument("--lr", type=float, default=3e-4)
         parser.add_argument("--hidden1_size", type=int, default=250)
         parser.add_argument("--hidden2_size", type=int, default=100)
         return parser
