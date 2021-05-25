@@ -12,6 +12,7 @@ class ConditionedObservablesFC(Dataset):
     def __init__(
         self,
         reconstructions_paths: List[str],
+        n_out_samples: int,
         low_exp: float,
         high_exp: float,
         n_exp: int,
@@ -53,21 +54,24 @@ class ConditionedObservablesFC(Dataset):
             p_tbar=recos["p_tbar"],
         )
 
-        rng = np.random.default_rng(rnd_seed)
-        n_observables = matrix.shape[1]
-        exps = rng.integers(low_exp, high_exp, size=(n_exp, n_observables))
+        n_keep = (matrix.shape[0] // n_out_samples) * n_out_samples
+        trimmed_matrix = matrix[:n_keep, :]
+        del matrix
 
-        exps_vec = np.repeat(exps, matrix.shape[0], axis=0)
-        matrix_vec = np.tile(matrix, (exps.shape[0], 1))
+        rng = np.random.default_rng(rnd_seed)
+        n_observables = trimmed_matrix.shape[1]
+        exps = rng.uniform(low_exp, high_exp, size=(n_exp, n_observables))
+
+        exps_vec = np.repeat(exps, trimmed_matrix.shape[0], axis=0)
+        matrix_vec = np.tile(trimmed_matrix, (exps.shape[0], 1))
         stable_matrix_vec = matrix_vec + 2
         conditioned_matrix_vec = np.prod(stable_matrix_vec ** exps_vec, axis=1)
         stable_conditioned_matrix_vec = np.log(conditioned_matrix_vec).astype(np.float32)
 
         self.n_observables = n_observables
-        self.n_samples = matrix.shape[0]
         self.exps = exps.astype(np.float32)
         self.batched_conditioned_matrix = stable_conditioned_matrix_vec.reshape(
-            exps.shape[0], matrix.shape[0]
+            -1, n_out_samples
         )
         self.biases = np.mean(self.batched_conditioned_matrix, axis=0)
 
