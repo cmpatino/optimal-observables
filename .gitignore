@@ -146,3 +146,4 @@ hep-docker/generated-data/
 reconstructed_events/
 lightning_logs/
 model_ckpts/
+mlruns/
