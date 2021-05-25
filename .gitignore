@@ -145,3 +145,4 @@ hep-docker/generated-data/
 # Outputs
 reconstructed_events/
 lightning_logs/
+model_ckpts/
