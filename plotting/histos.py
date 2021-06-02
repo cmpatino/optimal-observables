@@ -116,10 +116,14 @@ def ratio_hist(processes_q: List[List[float]], hist_labels: List[str],
     p_bins = {}
     p_edges = {}
     p_errors = {}
+    edges = None
     for p, label in zip(processes_q, hist_labels):
+        bins = n_bins
+        if edges is not None:
+            bins = edges
         bins, edges, _ = ax[0].hist(
             x=p,
-            bins=n_bins,
+            bins=bins,
             range=hist_range,
             fill=False,
             label=label,
