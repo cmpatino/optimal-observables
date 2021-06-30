@@ -16,6 +16,7 @@ class ConditionedObservablesFC(Dataset):
         low_exp: float,
         high_exp: float,
         n_exp: int,
+        only_cosine_terms=False,
         rnd_seed=202094
     ):
         reco_names = [
@@ -52,6 +53,7 @@ class ConditionedObservablesFC(Dataset):
             p_l_tbar=recos["p_l_tbar"],
             p_top=recos["p_top"],
             p_tbar=recos["p_tbar"],
+            only_cosine_terms=only_cosine_terms
         )
 
         n_keep = (matrix.shape[0] // n_out_samples) * n_out_samples

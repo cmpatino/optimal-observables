@@ -46,7 +46,7 @@ def calculate_cosine_obs(p_particle, k_hat, r_hat, n_hat):
     return cos_k, cos_r, cos_n
 
 
-def get_matrix(p_l_t, p_l_tbar, p_top, p_tbar):
+def get_matrix(p_l_t, p_l_tbar, p_top, p_tbar, only_cosine_terms=False):
     p_top_com, p_tbar_com, p_com = boost_to_com(p_top, p_tbar)
     k_hat, r_hat, n_hat = create_basis(p_top_com)
 
@@ -76,4 +76,6 @@ def get_matrix(p_l_t, p_l_tbar, p_top, p_tbar):
         ],
         axis=1,
     )
+    if only_cosine_terms:
+        return obs_matrix[:, :6]
     return obs_matrix

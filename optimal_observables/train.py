@@ -18,7 +18,8 @@ full_dataset = ConditionedObservablesFC(
     n_out_samples=n_out_samples,
     low_exp=-5,
     high_exp=5,
-    n_exp=1000,
+    n_exp=2000,
+    only_cosine_terms=True
 )
 n_train = int(len(full_dataset) * 0.7)
 n_val = len(full_dataset) - n_train
