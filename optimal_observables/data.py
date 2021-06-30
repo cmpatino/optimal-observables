@@ -69,14 +69,17 @@ class ConditionedObservablesFC(Dataset):
         stable_conditioned_matrix_vec = np.log(conditioned_matrix_vec).astype(np.float32)
 
         self.n_observables = n_observables
-        self.exps = exps.astype(np.float32)
+        self.batched_exps = np.repeat(
+            exps.astype(np.float32),
+            n_keep // n_out_samples,
+            axis=0)
         self.batched_conditioned_matrix = stable_conditioned_matrix_vec.reshape(
             -1, n_out_samples
         )
         self.biases = np.mean(self.batched_conditioned_matrix, axis=0)
 
     def __len__(self):
-        return len(self.exps)
+        return len(self.batched_exps)
 
     def __getitem__(self, idx):
-        return self.exps[idx], self.batched_conditioned_matrix[idx]
+        return self.batched_exps[idx], self.batched_conditioned_matrix[idx]
