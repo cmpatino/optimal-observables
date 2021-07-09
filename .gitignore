@@ -147,3 +147,4 @@ reconstructed_events/
 lightning_logs/
 model_ckpts/
 mlruns/
+config.py
