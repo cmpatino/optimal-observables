@@ -1,11 +1,10 @@
 import os
-import numpy as np
-
 from typing import List
 
+import numpy as np
 from torch.utils.data import Dataset
 
-import observables
+from src.optimal_observables import observables
 
 
 class ConditionedObservablesFC(Dataset):

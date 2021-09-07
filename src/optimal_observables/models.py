@@ -1,9 +1,9 @@
-import torch
-import pytorch_lightning as pl
-
-from torch.nn import functional as F
-from torch import nn
 from argparse import ArgumentParser
+
+import pytorch_lightning as pl
+import torch
+from torch import nn
+from torch.nn import functional as F
 
 
 class FullyConnected(pl.LightningModule):

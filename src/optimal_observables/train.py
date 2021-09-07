@@ -1,14 +1,13 @@
-import mlflow
-import pytorch_lightning as pl
-
 from argparse import ArgumentParser
-from torch.utils.data import DataLoader, random_split
-from pytorch_lightning.loggers import MLFlowLogger
 
 import config
-from data import ConditionedObservablesFC
-from models import FullyConnected
+import mlflow
+import pytorch_lightning as pl
+from pytorch_lightning.loggers import MLFlowLogger
+from torch.utils.data import DataLoader, random_split
 
+from src.optimal_observables.data import ConditionedObservablesFC
+from src.optimal_observables.models import FullyConnected
 
 full_dataset = ConditionedObservablesFC(**config.dataset_config)
 n_train = int(len(full_dataset) * 0.7)

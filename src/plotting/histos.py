@@ -1,8 +1,8 @@
-import numpy as np
-import matplotlib.pyplot as plt
-
-from matplotlib.figure import Figure
 from typing import List, Tuple
+
+import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib.figure import Figure
 
 
 def hist_n_particles(q: List[int], label: str) -> Figure:

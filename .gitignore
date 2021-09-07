@@ -129,7 +129,8 @@ dmypy.json
 .pyre/
 
 # Data and Images
-mg5_data/
+data/
+generated-data/
 
 # Cache files
 .vscode

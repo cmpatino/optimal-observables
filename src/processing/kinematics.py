@@ -1,6 +1,8 @@
-import numpy as np
 from typing import List
-from processing import event_selection
+
+import numpy as np
+
+from src.processing import event_selection
 
 
 def four_momentum(pt: np.ndarray, phi: np.ndarray, eta: np.ndarray,

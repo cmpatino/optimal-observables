@@ -1,17 +1,14 @@
 import os
-import sys
-import uproot
-import numpy as np
-import jax.numpy as jnp
-
-from jax import jit
-from typing import Union, Tuple
 from itertools import permutations
+from typing import Tuple, Union
+
+import jax.numpy as jnp
+import numpy as np
+import uproot
+from jax import jit
 from tqdm import tqdm
 
-sys.path.append("..")
-from processing import event_selection, kinematics  # noqa: E402
-
+from src.processing import event_selection, kinematics  # noqa: E402
 
 M_W = 80.4
 M_ELECTRON = 0.000510998902

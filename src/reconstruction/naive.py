@@ -1,13 +1,10 @@
 import os
-import sys
-import uproot
-import numpy as np
-
 from typing import List, Tuple
 
-sys.path.append("..")
-from processing import event_selection
+import numpy as np
+import uproot
 
+from src.processing import event_selection
 
 M_T = 172.5
 M_W = 80.4
