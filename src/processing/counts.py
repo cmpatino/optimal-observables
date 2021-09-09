@@ -1,6 +1,6 @@
 from typing import List
 
-from src.processing import event_selection
+from processing import event_selection
 
 
 def n_particles_from_tag(events, key: str) -> List[int]:

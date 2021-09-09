@@ -6,8 +6,8 @@ import pytorch_lightning as pl
 from pytorch_lightning.loggers import MLFlowLogger
 from torch.utils.data import DataLoader, random_split
 
-from src.optimal_observables.data import ConditionedObservablesFC
-from src.optimal_observables.models import FullyConnected
+from optimal_observables.data import ConditionedObservablesFC
+from optimal_observables.models import FullyConnected
 
 full_dataset = ConditionedObservablesFC(**config.dataset_config)
 n_train = int(len(full_dataset) * 0.7)

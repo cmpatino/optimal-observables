@@ -1,7 +1,7 @@
 import numpy as np
 from awkward.array.jagged import JaggedArray
 
-import src.processing.kinematics as kinematics
+import processing.kinematics as kinematics
 
 
 def select_jet(events) -> JaggedArray:
