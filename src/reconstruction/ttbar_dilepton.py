@@ -6,6 +6,7 @@ import numpy as np
 from jax import jit
 
 from processing import kinematics
+from reconstruction.objects import MET, Particle, ReconstructedEvent
 
 M_W = 80.4
 M_ELECTRON = 0.000510998902
@@ -363,104 +364,63 @@ def lepton_kinematics(
 
 
 def reconstruct_event(
-    bjets_mass: np.ndarray,
-    bjets_pt: np.ndarray,
-    bjets_phi: np.ndarray,
-    bjets_eta: np.ndarray,
-    electron_pt: np.ndarray,
-    electron_phi: np.ndarray,
-    electron_eta: np.ndarray,
-    electron_charge: np.ndarray,
-    muon_pt: np.ndarray,
-    muon_phi: np.ndarray,
-    muon_eta: np.ndarray,
-    muon_charge: np.ndarray,
-    met: np.ndarray,
-    met_phi: np.ndarray,
+    bjet: Particle,
+    electron: Particle,
+    muon: Particle,
+    met: MET,
     idx: int,
     rng: np.random.Generator,
-) -> Union[
-    Tuple[
-        np.ndarray,
-        np.ndarray,
-        np.ndarray,
-        np.ndarray,
-        np.ndarray,
-        np.ndarray,
-        np.ndarray,
-        np.ndarray,
-        np.ndarray,
-        np.ndarray,
-    ],
-    None,
-]:
+) -> Union[ReconstructedEvent, None]:
     """Reconstruct neutrinos in the event.
 
-    :param bjets_mass: Mass of b-jets in event.
-    :type bjets_mass: np.ndarray
-    :param bjets_pt: PT of b-jets in event.
-    :type bjets_pt: np.ndarray
-    :param bjets_phi: Phi of b-jets in event.
-    :type bjets_phi: np.ndarray
-    :param bjets_eta: Eta of b-jets in event.
-    :type bjets_eta: np.ndarray
-    :param electron_pt: PT of electrons in event.
-    :type electron_pt: np.ndarray
-    :param electron_phi: Phi of electrons in event.
-    :type electron_phi: np.ndarray
-    :param electron_eta: Eta of electrons in event.
-    :type electron_eta: np.ndarray
-    :param electron_charge: Charges of electrons in event.
-    :type electron_charge: np.ndarray
-    :param muon_pt: PT of muons in event.
-    :type muon_pt: np.ndarray
-    :param muon_phi: Phi of muons in event.
-    :type muon_phi: np.ndarray
-    :param muon_eta: Eta of muons in event.
-    :type muon_eta: np.ndarray
-    :param muon_charge: Charge of muons in event.
-    :type muon_charge: np.ndarray
+    :param bjet: Kinematics of b-jets in event.
+    :type bjet: Particle
+    :param electron: Kinematics of electrons in event.
+    :type electron: Particle
+    :param muon: Kinematics of muons in event.
+    :type muon: Particle
     :param met: MET in event.
-    :type met: np.ndarray
-    :param met_phi: Phi of MET in event.
-    :type met_phi: np.ndarray
+    :type met: MET
     :param idx: Event index.
     :type idx: int
     :param rng: Numpy's random number generator.
     :type rng: np.random.Generator
     :return: Particles in the event with idx and reconstruction weight. Return
              None if event doesn't meet selection criteria.
-    :rtype: Union[Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray,
-                 np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray], None]
+    :rtype: Union[ReconstructedEvent, None]
     """
     p_l_t, p_l_tbar, m_l_t, m_l_tbar = lepton_kinematics(
-        electron_pt=electron_pt,
-        electron_phi=electron_phi,
-        electron_eta=electron_eta,
-        electron_charge=electron_charge,
-        muon_pt=muon_pt,
-        muon_phi=muon_phi,
-        muon_eta=muon_eta,
-        muon_charge=muon_charge,
+        electron_pt=electron.pt[idx],
+        electron_phi=electron.phi[idx],
+        electron_eta=electron.eta[idx],
+        electron_charge=electron.charge[idx],
+        muon_pt=muon.pt[idx],
+        muon_phi=muon.phi[idx],
+        muon_eta=muon.eta[idx],
+        muon_charge=muon.charge[idx],
     )
     if p_l_t is None:
         return None
 
-    if len(bjets_mass) < 2:
+    if len(bjet.mass[idx]) < 2:
         return None
 
-    bjets_combinations_idxs = np.array(list(permutations(range(len(bjets_mass)), 2)))
-    smeared_bjets_pt = rng.normal(bjets_pt, bjets_pt * 0.14, (5, len(bjets_pt)))
+    bjets_combinations_idxs = np.array(
+        list(permutations(range(len(bjet.mass[idx])), 2))
+    )
+    smeared_bjets_pt = rng.normal(
+        bjet.pt[idx], bjet.pt[idx] * 0.14, (5, len(bjet.pt[idx]))
+    )
     p_b_t, p_b_tbar, m_b_t, m_b_tbar = ttbar_bjets_kinematics(
         smeared_bjets_pt=smeared_bjets_pt,
-        bjets_phi=bjets_phi,
-        bjets_eta=bjets_eta,
-        bjets_mass=bjets_mass,
+        bjets_phi=bjet.phi[idx],
+        bjets_eta=bjet.eta[idx],
+        bjets_mass=bjet.mass[idx],
         bjets_combinations_idxs=bjets_combinations_idxs,
     )
 
-    met_x = (met * np.cos(met_phi))[0]
-    met_y = (met * np.sin(met_phi))[0]
+    met_x = (met.magnitude[idx] * np.cos(met.phi[idx]))[0]
+    met_y = (met.magnitude[idx] * np.sin(met.phi[idx]))[0]
 
     # Vectorize Eta grid for loop
     eta_range = np.linspace(-5, 5, 51)
@@ -569,15 +529,16 @@ def reconstruct_event(
     p_tbar = best_b_tbar + best_l_tbar + best_nu_tbar
     idx_arr = np.array([idx])
 
-    return (
-        p_top,
-        best_l_t,
-        best_b_t,
-        best_nu_t,
-        p_tbar,
-        best_l_tbar,
-        best_b_tbar,
-        best_nu_tbar,
-        idx_arr,
-        best_weight,
+    reconstructed_event = ReconstructedEvent(
+        p_top=p_top,
+        p_l_t=best_l_t,
+        p_b_t=best_b_t,
+        p_nu_t=best_nu_t,
+        p_tbar=p_tbar,
+        p_l_tbar=best_l_tbar,
+        p_b_tbar=best_b_tbar,
+        p_nu_tbar=best_nu_tbar,
+        idx=idx_arr,
+        weight=best_weight,
     )
+    return reconstructed_event

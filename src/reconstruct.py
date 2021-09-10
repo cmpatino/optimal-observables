@@ -1,12 +1,13 @@
 import os
+from collections import defaultdict
 
 import numpy as np
 import uproot
 from tqdm import tqdm
 
-from reconstruction.ttbar_dilepton import reconstruct_event
 from processing import event_selection
-
+from reconstruction.objects import MET, Particle
+from reconstruction.ttbar_dilepton import M_ELECTRON, M_MUON, reconstruct_event
 
 if __name__ == "__main__":
     process_name = "SM_spin-OFF_100k"
@@ -17,7 +18,7 @@ if __name__ == "__main__":
         f"{process_name}_{random_seed}",
         "Events/run_01_decayed_1/tag_1_delphes_events.root",
     )
-    output_dir = f"../reconstructed_events/{process_name}_{random_seed}"
+    output_dir = f"../reconstructed_events_test/{process_name}_{random_seed}"
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     n_batches = 10
@@ -40,36 +41,37 @@ if __name__ == "__main__":
     bjets_pt = sm_events["Jet.PT"].array()[jets_mask][bjets_mask]
     bjets_phi = sm_events["Jet.Phi"].array()[jets_mask][bjets_mask]
     bjets_eta = sm_events["Jet.Eta"].array()[jets_mask][bjets_mask]
+    bjet = Particle(pt=bjets_pt, phi=bjets_phi, eta=bjets_eta, mass=bjets_mass)
 
     # Select electrons that pass selection criteria
     electron_pt = sm_events["Electron.PT"].array()[electron_mask]
     electron_phi = sm_events["Electron.Phi"].array()[electron_mask]
     electron_eta = sm_events["Electron.Eta"].array()[electron_mask]
     electron_charge = sm_events["Electron.Charge"].array()[electron_mask]
+    electron = Particle(
+        pt=electron_pt,
+        phi=electron_phi,
+        eta=electron_eta,
+        mass=M_ELECTRON,
+        charge=electron_charge,
+    )
 
     # Select muons that pass selection criteria
     muon_pt = sm_events["Muon.PT"].array()[muon_mask]
     muon_phi = sm_events["Muon.Phi"].array()[muon_mask]
     muon_eta = sm_events["Muon.Eta"].array()[muon_mask]
     muon_charge = sm_events["Muon.Charge"].array()[muon_mask]
+    muon = Particle(
+        pt=muon_pt, phi=muon_phi, eta=muon_eta, mass=M_MUON, charge=muon_charge
+    )
 
     # MET for all events
-    met = sm_events["MissingET.MET"].array()
+    met_magnitude = sm_events["MissingET.MET"].array()
     met_phi = sm_events["MissingET.Phi"].array()
+    met = MET(magnitude=met_magnitude, phi=met_phi)
+
     print("Applying selection criteria...Done")
 
-    reco_names = [
-        "p_top",
-        "p_l_t",
-        "p_b_t",
-        "p_nu_t",
-        "p_tbar",
-        "p_l_tbar",
-        "p_b_tbar",
-        "p_nu_tbar",
-        "idx",
-        "weight",
-    ]
     step_size = len(muon_phi) // n_batches
     rng = np.random.default_rng(random_seed)
     for batch_idx in tqdm(range(n_batches)):
@@ -77,32 +79,22 @@ if __name__ == "__main__":
         end_idx = init_idx + step_size
         reconstructed_events = [
             reconstruct_event(
-                bjets_mass=bjets_mass[idx],
-                bjets_pt=bjets_pt[idx],
-                bjets_phi=bjets_phi[idx],
-                bjets_eta=bjets_eta[idx],
-                electron_pt=electron_pt[idx],
-                electron_phi=electron_phi[idx],
-                electron_eta=electron_eta[idx],
-                electron_charge=electron_charge[idx],
-                muon_pt=muon_pt[idx],
-                muon_phi=muon_phi[idx],
-                muon_eta=muon_eta[idx],
-                muon_charge=muon_charge[idx],
-                met=met[idx],
-                met_phi=met_phi[idx],
+                bjet=bjet,
+                electron=electron,
+                muon=muon,
+                met=met,
                 idx=idx,
                 rng=rng,
             )
             for idx in tqdm(range(init_idx, end_idx), leave=False)
         ]
 
-        recos = {name: [] for name in reco_names}
+        recos = defaultdict(list)
 
         for event in reconstructed_events:
             if event is None:
                 continue
-            for name, reco_p in zip(reco_names, event):
+            for name, reco_p in event.return_values().items():
                 recos[name].append(reco_p.reshape(1, -1))
 
         reco_arrays = {
