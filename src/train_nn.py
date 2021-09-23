@@ -1,11 +1,11 @@
 from argparse import ArgumentParser
 
-import config
 import mlflow
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import MLFlowLogger
 from torch.utils.data import DataLoader, random_split
 
+from optimal_observables import config
 from optimal_observables.data import ConditionedObservablesFC
 from optimal_observables.models import FullyConnected
 
@@ -29,12 +29,12 @@ model = FullyConnected(hparams=hparams, biases=biases)
 
 mlf_logger = MLFlowLogger(
     experiment_name=f"{config.process}-pl",
-    tracking_uri="file:./mlruns/",
+    tracking_uri="file:../data/mlruns/",
 )
 
 checkpoint_callback = pl.callbacks.ModelCheckpoint(
     monitor="val_loss",
-    dirpath=f"model_ckpts/{config.process}",
+    dirpath=f"../data/model_ckpts/{config.process}",
     filename="model",
     save_top_k=1,
     mode="min",
