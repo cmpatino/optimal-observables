@@ -5,20 +5,18 @@ import numpy as np
 import uproot
 from tqdm import tqdm
 
+from reconstruction import config
 from processing import event_selection
 from reconstruction.objects import MET, Particle
 from reconstruction.ttbar_dilepton import M_ELECTRON, M_MUON, reconstruct_event
 
 if __name__ == "__main__":
-    process_name = "SM_spin-OFF_100k"
-    random_seed = 0
-
     sm_path = os.path.join(
         "../data/mg5_data",
-        f"{process_name}_{random_seed}",
+        f"{config.process_name}_{config.random_seed}",
         "Events/run_01_decayed_1/tag_1_delphes_events.root",
     )
-    output_dir = f"../reconstructed_events_test/{process_name}_{random_seed}"
+    output_dir = f"../data/reconstructed_events/{config.process_name}_{config.random_seed}"
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     n_batches = 10
@@ -73,7 +71,7 @@ if __name__ == "__main__":
     print("Applying selection criteria...Done")
 
     step_size = len(muon_phi) // n_batches
-    rng = np.random.default_rng(random_seed)
+    rng = np.random.default_rng(config.random_seed)
     for batch_idx in tqdm(range(n_batches)):
         init_idx = batch_idx * step_size
         end_idx = init_idx + step_size
