@@ -134,6 +134,7 @@ generated-data/
 
 # Cache files
 .vscode
+.DS_Store
 
 # Notebooks
 notebooks/
