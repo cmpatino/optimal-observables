@@ -3,6 +3,7 @@ from argparse import ArgumentParser
 import mlflow
 import pytorch_lightning as pl
 from pytorch_lightning.loggers import MLFlowLogger
+from pytorch_lightning.callbacks import RichProgressBar, RichModelSummary
 from torch.utils.data import DataLoader, random_split
 
 from optimal_observables import classifier_config
@@ -44,7 +45,7 @@ early_stop_callback = pl.callbacks.early_stopping.EarlyStopping(
 trainer = pl.Trainer(
     logger=mlf_logger,
     max_epochs=10000,
-    callbacks=[checkpoint_callback, early_stop_callback],
+    callbacks=[checkpoint_callback, early_stop_callback, RichModelSummary(), RichProgressBar()],
 )
 
 mlflow.set_experiment("ON-OFF")
