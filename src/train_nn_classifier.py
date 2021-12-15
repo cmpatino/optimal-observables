@@ -35,7 +35,7 @@ mlf_logger = MLFlowLogger(
 checkpoint_callback = pl.callbacks.ModelCheckpoint(
     monitor="val_roc_auc",
     dirpath="../data/model_ckpts/ON-OFF",
-    filename="model",
+    filename=f"model_{mlf_logger.run_id}",
     save_top_k=1,
     mode="min",
 )
@@ -50,7 +50,7 @@ trainer = pl.Trainer(
 
 mlflow.set_experiment("ON-OFF")
 mlflow.pytorch.autolog()
-with mlflow.start_run(tags={"pl-source": mlf_logger.run_id}) as run:
+with mlflow.start_run(tags={"run-id": mlf_logger.run_id}) as run:
     mlflow.log_params(classifier_config.dataset_config)
     mlflow.log_params(vars(hparams))
     trainer.fit(model, train_dataloader, val_dataloader)
