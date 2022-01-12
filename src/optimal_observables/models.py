@@ -68,9 +68,9 @@ class NNClassifier(pl.LightningModule):
             in_features=hparams.input_size, out_features=hparams.hidden_size
         )
         self.feature_layer = nn.Linear(
-            in_features=hparams.hidden_size, out_features=hparams.n_output_features
+            in_features=hparams.hidden_size, out_features=hparams.n_learned_observables
         )
-        self.feature_generator = nn.Sequential(
+        self.observables_generator = nn.Sequential(
             self.input_layer,
             nn.Tanh(),
             nn.Linear(hparams.hidden_size, hparams.hidden_size),
@@ -81,7 +81,7 @@ class NNClassifier(pl.LightningModule):
         )
 
         self.output_layer = nn.Linear(
-            in_features=hparams.n_output_features,
+            in_features=hparams.n_learned_observables,
             out_features=1,
             bias=False,
         )
@@ -89,7 +89,7 @@ class NNClassifier(pl.LightningModule):
         self.loss = nn.BCEWithLogitsLoss()
 
     def forward(self, input_x):
-        x = self.feature_generator(input_x)
+        x = self.observables_generator(input_x)
         x = self.output_layer(x)
         return x
 
@@ -119,5 +119,5 @@ class NNClassifier(pl.LightningModule):
         parser = ArgumentParser(parents=[parent_parser], add_help=False)
         parser.add_argument("--lr", type=float, default=3e-4)
         parser.add_argument("--hidden_size", type=int, default=128)
-        parser.add_argument("--n_output_features", type=int, default=6)
+        parser.add_argument("--n_learned_observables", type=int, default=6)
         return parser
