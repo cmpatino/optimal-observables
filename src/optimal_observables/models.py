@@ -65,23 +65,25 @@ class NNClassifier(pl.LightningModule):
         self.save_hyperparameters(hparams)
 
         self.input_layer = nn.Linear(
-            in_features=hparams.input_size, out_features=hparams.hidden_size
+            in_features=self.hparams["input_size"],
+            out_features=self.hparams["hidden_size"],
         )
         self.feature_layer = nn.Linear(
-            in_features=hparams.hidden_size, out_features=hparams.n_learned_observables
+            in_features=self.hparams["hidden_size"],
+            out_features=self.hparams["n_learned_observables"],
         )
         self.observables_generator = nn.Sequential(
             self.input_layer,
             nn.Tanh(),
-            nn.Linear(hparams.hidden_size, hparams.hidden_size),
+            nn.Linear(self.hparams["hidden_size"], self.hparams["hidden_size"]),
             nn.Tanh(),
-            nn.Linear(hparams.hidden_size, hparams.hidden_size),
+            nn.Linear(self.hparams["hidden_size"], self.hparams["hidden_size"]),
             nn.Tanh(),
             self.feature_layer,
         )
 
         self.output_layer = nn.Linear(
-            in_features=hparams.n_learned_observables,
+            in_features=self.hparams["n_learned_observables"],
             out_features=1,
             bias=False,
         )
