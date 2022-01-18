@@ -68,19 +68,19 @@ class NNClassifier(pl.LightningModule):
             in_features=self.hparams["input_size"],
             out_features=self.hparams["hidden_size"],
         )
-        self.feature_layer = nn.Linear(
+        self.exponents_layer = nn.Linear(
             in_features=self.hparams["hidden_size"],
             out_features=self.hparams["n_learned_observables"],
         )
-        self.observables_generator = nn.Sequential(
-            self.input_layer,
-            nn.Tanh(),
-            nn.Linear(self.hparams["hidden_size"], self.hparams["hidden_size"]),
-            nn.Tanh(),
-            nn.Linear(self.hparams["hidden_size"], self.hparams["hidden_size"]),
-            nn.Tanh(),
-            self.feature_layer,
-        )
+
+        generator_layers = list()
+        for _ in range(self.hparams["n_layers_generator"]):
+            generator_layers.append(nn.Tanh())
+            generator_layers.append(
+                nn.Linear(self.hparams["hidden_size"], self.hparams["hidden_size"])
+            )
+
+        self.observables_generator = nn.Sequential(*generator_layers)
 
         self.output_layer = nn.Linear(
             in_features=self.hparams["n_learned_observables"],
@@ -91,7 +91,9 @@ class NNClassifier(pl.LightningModule):
         self.loss = nn.BCEWithLogitsLoss()
 
     def forward(self, input_x):
-        x = self.observables_generator(input_x)
+        x = self.input_layer(input_x)
+        x = self.observables_generator(x)
+        x = self.exponents_layer(x)
         x = self.output_layer(x)
         return x
 
@@ -121,5 +123,6 @@ class NNClassifier(pl.LightningModule):
         parser = ArgumentParser(parents=[parent_parser], add_help=False)
         parser.add_argument("--lr", type=float, default=3e-4)
         parser.add_argument("--hidden_size", type=int, default=128)
+        parser.add_argument("--n_layers_generator", type=int, default=5)
         parser.add_argument("--n_learned_observables", type=int, default=6)
         return parser
