@@ -2,6 +2,7 @@ import os
 from argparse import Namespace
 
 import numpy as np
+import pandas as pd
 import torch
 from pysr import best, pysr
 from rich.console import Console
@@ -21,6 +22,7 @@ if __name__ == "__main__":
     console = Console()
 
     model = NNClassifier.load_from_checkpoint(ckpt_path)
+    exponents = model.output_layer.weight.flatten().tolist()
 
     dataset = ClassifierDataset(**classifier_config.dataset_config)
     loader = DataLoader(dataset, batch_size=32)
@@ -37,7 +39,7 @@ if __name__ == "__main__":
     log_learned_observables = torch.cat(all_learned_observables, dim=0).numpy()
 
     input_observables = np.exp(log_input_observables) - 2
-    learned_observables = np.exp(log_learned_observables) - 2
+    learned_observables = np.exp(log_learned_observables)
     random_sample = np.random.choice(len(input_observables), size=1000, replace=False)
 
     best_equations = list()
@@ -60,4 +62,16 @@ if __name__ == "__main__":
         console.print(learned_equation)
         best_equations.append(learned_equation)
 
-    console.print(best_equations)
+    results_df = pd.DataFrame()
+    results_df["observable"] = best_equations
+    results_df["exponent"] = exponents
+
+    output_dir = os.path.join(
+        os.path.dirname(ckpts_base_path),
+        "observables",
+    )
+    os.makedirs(output_dir, exist_ok=True)
+
+    results_df.to_csv(
+        os.path.join(output_dir, f"learned_observable_{run_id}.csv"), index=False
+    )
