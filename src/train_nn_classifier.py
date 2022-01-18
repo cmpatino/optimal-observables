@@ -18,13 +18,16 @@ train_dataset, val_dataset = random_split(
 )
 
 batch_size = 128
-train_dataloader = DataLoader(train_dataset, batch_size=128, num_workers=0, shuffle=True)
-val_dataloader = DataLoader(val_dataset, batch_size=128, num_workers=0)
+n_epochs = 100
+train_dataloader = DataLoader(train_dataset, batch_size=batch_size, num_workers=0, shuffle=True)
+val_dataloader = DataLoader(val_dataset, batch_size=batch_size, num_workers=0)
 
 parser = ArgumentParser()
 parser = NNClassifier.add_model_specific_args(parser)
 hparams = parser.parse_args()
 hparams.input_size = full_dataset.input_features
+hparams.n_epochs = n_epochs
+hparams.batch_size = batch_size
 model = NNClassifier(hparams=hparams)
 
 mlf_logger = MLFlowLogger(
@@ -44,7 +47,7 @@ early_stop_callback = pl.callbacks.early_stopping.EarlyStopping(
 )
 trainer = pl.Trainer(
     logger=mlf_logger,
-    max_epochs=10000,
+    max_epochs=n_epochs,
     callbacks=[checkpoint_callback, early_stop_callback, RichModelSummary(), RichProgressBar()],
 )
 
