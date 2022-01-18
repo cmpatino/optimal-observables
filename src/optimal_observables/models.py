@@ -104,6 +104,9 @@ class NNClassifier(pl.LightningModule):
         x, y = batch
         y_pred = self(x)
         loss = self.loss(y_pred, y.float())
+        y_pred_proba = torch.sigmoid(y_pred)
+        roc_auc_score = auroc(y_pred_proba, y.int(), pos_label=1)
+        self.log("train_roc_auc", roc_auc_score, on_epoch=True, on_step=False)
         self.log("train_loss", loss)
         return loss
 
