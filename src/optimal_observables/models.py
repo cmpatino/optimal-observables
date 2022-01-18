@@ -68,10 +68,6 @@ class NNClassifier(pl.LightningModule):
             in_features=self.hparams["input_size"],
             out_features=self.hparams["hidden_size"],
         )
-        self.exponents_layer = nn.Linear(
-            in_features=self.hparams["hidden_size"],
-            out_features=self.hparams["n_learned_observables"],
-        )
 
         generator_layers = list()
         for _ in range(self.hparams["n_layers_generator"]):
@@ -79,10 +75,14 @@ class NNClassifier(pl.LightningModule):
             generator_layers.append(
                 nn.Linear(self.hparams["hidden_size"], self.hparams["hidden_size"])
             )
+        generator_layers.append(nn.Linear(
+            in_features=self.hparams["hidden_size"],
+            out_features=self.hparams["n_learned_observables"],
+        ))
 
         self.observables_generator = nn.Sequential(*generator_layers)
 
-        self.output_layer = nn.Linear(
+        self.exponents_layer = nn.Linear(
             in_features=self.hparams["n_learned_observables"],
             out_features=1,
             bias=False,
@@ -94,7 +94,6 @@ class NNClassifier(pl.LightningModule):
         x = self.input_layer(input_x)
         x = self.observables_generator(x)
         x = self.exponents_layer(x)
-        x = self.output_layer(x)
         return x
 
     def configure_optimizers(self):

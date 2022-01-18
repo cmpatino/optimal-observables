@@ -22,7 +22,7 @@ if __name__ == "__main__":
     console = Console()
 
     model = NNClassifier.load_from_checkpoint(ckpt_path)
-    exponents = model.output_layer.weight.flatten().tolist()
+    exponents = model.exponents_layer.weight.flatten().tolist()
 
     dataset = ClassifierDataset(**classifier_config.dataset_config)
     loader = DataLoader(dataset, batch_size=32)
@@ -68,7 +68,7 @@ if __name__ == "__main__":
 
     output_dir = os.path.join(
         os.path.dirname(ckpts_base_path),
-        "observables",
+        "learned_observables",
     )
     os.makedirs(output_dir, exist_ok=True)
 
