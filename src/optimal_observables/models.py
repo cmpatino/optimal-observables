@@ -75,7 +75,7 @@ class NNClassifier(pl.LightningModule):
 
         generator_layers = list()
         for _ in range(self.hparams["n_layers_generator"]):
-            generator_layers.append(nn.Tanh())
+            generator_layers.append(getattr(nn, self.hparams["activation_function"])())
             generator_layers.append(
                 nn.Linear(self.hparams["hidden_size"], self.hparams["hidden_size"])
             )
@@ -125,4 +125,5 @@ class NNClassifier(pl.LightningModule):
         parser.add_argument("--hidden_size", type=int, default=128)
         parser.add_argument("--n_layers_generator", type=int, default=5)
         parser.add_argument("--n_learned_observables", type=int, default=6)
+        parser.add_argument("--activation_function", type=str, default="ReLU")
         return parser
