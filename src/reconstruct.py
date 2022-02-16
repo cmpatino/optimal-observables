@@ -1,6 +1,7 @@
 import os
 from collections import defaultdict
 
+import awkward as ak
 import numpy as np
 import uproot
 from tqdm import tqdm
@@ -32,7 +33,8 @@ if __name__ == "__main__":
     jets_mask = event_selection.select_jet(sm_events)
 
     # Get mask for b-jets
-    bjets_mask = sm_events["Jet.BTag"].array()[jets_mask].astype(bool)
+    bjets_tags = sm_events["Jet.BTag"].array()[jets_mask]
+    bjets_mask = ak.values_astype(bjets_tags, bool)
 
     # Select b-jets that pass selection criteria from Jet TTree
     bjets_mass = sm_events["Jet.Mass"].array()[jets_mask][bjets_mask]
