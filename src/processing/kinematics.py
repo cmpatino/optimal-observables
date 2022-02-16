@@ -91,7 +91,7 @@ def dR(p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
     return np.sqrt((dPhi ** 2) + (dEta ** 2))
 
 
-def dphi_dilepton(events) -> List[float]:
+def dphi_dilepton(events) -> List[np.ndarray]:
     """Calculate delta phi between two leptons in the event. We require
     that the two leptons have opposite charge. The function assumes that
     there is maximum one muon per event.
@@ -128,7 +128,7 @@ def dphi_dilepton(events) -> List[float]:
     return dphi_vals
 
 
-def invariant_mass_ttbar(events) -> np.array:
+def invariant_mass_ttbar(events) -> np.ndarray:
     """Calculate invariant mass for ttbar system
 
     :param events: Delphes TTree
@@ -144,7 +144,7 @@ def invariant_mass_ttbar(events) -> np.array:
     return mass_vals
 
 
-def pt_ttbar(events) -> np.array:
+def pt_ttbar(events) -> np.ndarray:
     """Calculate total pT for ttbar system
 
     :param events: Delphes TTree
