@@ -17,7 +17,9 @@ if __name__ == "__main__":
         f"{config.process_name}_{config.random_seed}",
         "Events/run_01_decayed_1/tag_1_delphes_events.root",
     )
-    output_dir = f"../data/reconstructed_events/{config.process_name}_{config.random_seed}"
+    output_dir = (
+        f"../data/reconstructed_events_new/{config.process_name}_{config.random_seed}"
+    )
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     n_batches = 10
@@ -41,7 +43,12 @@ if __name__ == "__main__":
     bjets_pt = sm_events["Jet.PT"].array()[jets_mask][bjets_mask]
     bjets_phi = sm_events["Jet.Phi"].array()[jets_mask][bjets_mask]
     bjets_eta = sm_events["Jet.Eta"].array()[jets_mask][bjets_mask]
-    bjet = Particle(pt=bjets_pt, phi=bjets_phi, eta=bjets_eta, mass=bjets_mass)
+    bjet = Particle(
+        pt=[np.array(event) for event in bjets_pt],
+        phi=[np.array(event) for event in bjets_phi],
+        eta=[np.array(event) for event in bjets_eta],
+        mass=[np.array(event) for event in bjets_mass],
+    )
 
     # Select electrons that pass selection criteria
     electron_pt = sm_events["Electron.PT"].array()[electron_mask]
@@ -49,11 +56,11 @@ if __name__ == "__main__":
     electron_eta = sm_events["Electron.Eta"].array()[electron_mask]
     electron_charge = sm_events["Electron.Charge"].array()[electron_mask]
     electron = Particle(
-        pt=electron_pt,
-        phi=electron_phi,
-        eta=electron_eta,
+        pt=[np.array(event) for event in electron_pt],
+        phi=[np.array(event) for event in electron_phi],
+        eta=[np.array(event) for event in electron_eta],
         mass=M_ELECTRON,
-        charge=electron_charge,
+        charge=[np.array(event) for event in electron_charge],
     )
 
     # Select muons that pass selection criteria
@@ -62,13 +69,20 @@ if __name__ == "__main__":
     muon_eta = sm_events["Muon.Eta"].array()[muon_mask]
     muon_charge = sm_events["Muon.Charge"].array()[muon_mask]
     muon = Particle(
-        pt=muon_pt, phi=muon_phi, eta=muon_eta, mass=M_MUON, charge=muon_charge
+        pt=[np.array(event) for event in muon_pt],
+        phi=[np.array(event) for event in muon_phi],
+        eta=[np.array(event) for event in muon_eta],
+        mass=M_MUON,
+        charge=[np.array(event) for event in muon_charge],
     )
 
     # MET for all events
     met_magnitude = sm_events["MissingET.MET"].array()
     met_phi = sm_events["MissingET.Phi"].array()
-    met = MET(magnitude=met_magnitude, phi=met_phi)
+    met = MET(
+        magnitude=[np.array(event) for event in met_magnitude],
+        phi=[np.array(event) for event in met_phi],
+    )
 
     print("Applying selection criteria...Done")
 
