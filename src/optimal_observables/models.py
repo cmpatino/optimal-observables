@@ -64,21 +64,23 @@ class NNClassifier(pl.LightningModule):
         super(NNClassifier, self).__init__()
         self.save_hyperparameters(hparams)
 
-        self.input_layer = nn.Linear(
+        input_layer = nn.Linear(
             in_features=self.hparams["input_size"],
             out_features=self.hparams["hidden_size"],
         )
 
-        generator_layers = list()
+        generator_layers = [input_layer]
         for _ in range(self.hparams["n_layers_generator"]):
             generator_layers.append(getattr(nn, self.hparams["activation_function"])())
             generator_layers.append(
                 nn.Linear(self.hparams["hidden_size"], self.hparams["hidden_size"])
             )
-        generator_layers.append(nn.Linear(
-            in_features=self.hparams["hidden_size"],
-            out_features=self.hparams["n_learned_observables"],
-        ))
+        generator_layers.append(
+            nn.Linear(
+                in_features=self.hparams["hidden_size"],
+                out_features=self.hparams["n_learned_observables"],
+            )
+        )
 
         self.observables_generator = nn.Sequential(*generator_layers)
 
@@ -91,14 +93,16 @@ class NNClassifier(pl.LightningModule):
         self.loss = nn.BCEWithLogitsLoss()
 
     def forward(self, input_x):
-        x = self.input_layer(input_x)
-        x = self.observables_generator(x)
+        x = self.observables_generator(input_x)
         x = self.exponents_layer(x)
         return x
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.hparams.lr)
-        return optimizer
+        scheduler = torch.optim.lr_scheduler.OneCycleLR(
+            optimizer, total_steps=self.hparams["n_epochs"], max_lr=self.hparams["lr"]
+        )
+        return [optimizer], [scheduler]
 
     def training_step(self, batch, batch_nb):
         x, y = batch
