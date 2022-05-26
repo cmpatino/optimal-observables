@@ -18,6 +18,7 @@ dynamic = ["version", "description"]
 dependencies = [
     "numpy>=1.20.3",
     "jax>=0.2.26",
+    "jaxlib>=0.3.0",
     "awkward>=1.7.0",
     "tqdm>=4.62.3",
     "matplotlib>=3.5.1",
