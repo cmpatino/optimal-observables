@@ -6,25 +6,18 @@ import numpy as np
 import uproot
 from tqdm import tqdm
 
-from optimal_observables.reconstruction import config, event_selection
+from config import root_file_path, recos_output_dir, random_seed
+from optimal_observables.reconstruction import event_selection
 from optimal_observables.reconstruction.objects import MET, Particle
 from optimal_observables.reconstruction.ttbar_dilepton import M_ELECTRON, M_MUON, reconstruct_event
 
 if __name__ == "__main__":
-    sm_path = os.path.join(
-        "../data/mg5_data",
-        f"{config.process_name}_{config.random_seed}",
-        "Events/run_01_decayed_1/tag_1_delphes_events.root",
-    )
-    output_dir = (
-        f"../data/reconstructed_events_new/{config.process_name}_{config.random_seed}"
-    )
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+    if not os.path.exists(recos_output_dir):
+        os.makedirs(recos_output_dir)
     n_batches = 10
 
     print("Loading events...", end="\r")
-    sm_events = uproot.open(sm_path)["Delphes"]
+    sm_events = uproot.open(root_file_path)["Delphes"]
     print("Loading events...Done")
 
     print("Applying selection criteria...", end="\r")
@@ -86,7 +79,7 @@ if __name__ == "__main__":
     print("Applying selection criteria...Done")
 
     step_size = len(muon_phi) // n_batches
-    rng = np.random.default_rng(config.random_seed)
+    rng = np.random.default_rng(random_seed)
     for batch_idx in tqdm(range(n_batches)):
         init_idx = batch_idx * step_size
         end_idx = init_idx + step_size
@@ -116,7 +109,7 @@ if __name__ == "__main__":
 
         for name, p_array in reco_arrays.items():
             with open(
-                os.path.join(output_dir, f"{name}_batch_{batch_idx}.npy"), "wb"
+                os.path.join(recos_output_dir, f"{name}_batch_{batch_idx}.npy"), "wb"
             ) as f:
                 np.save(f, p_array)
         del recos, reco_arrays, reconstructed_events

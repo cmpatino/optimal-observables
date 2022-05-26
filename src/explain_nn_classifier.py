@@ -8,7 +8,7 @@ from rich.console import Console
 from rich.progress import track
 from torch.utils.data import DataLoader
 
-from optimal_observables.optimization import classifier_config
+from config import dataset_config
 from optimal_observables.optimization.data import ClassifierDataset
 from optimal_observables.optimization.models import NNClassifier
 
@@ -23,7 +23,7 @@ if __name__ == "__main__":
     model = NNClassifier.load_from_checkpoint(ckpt_path)
     exponents = model.exponents_layer.weight.flatten().tolist()
 
-    dataset = ClassifierDataset(**classifier_config.dataset_config)
+    dataset = ClassifierDataset(**dataset_config)
     loader = DataLoader(dataset, batch_size=32)
 
     all_learned_observables = list()
