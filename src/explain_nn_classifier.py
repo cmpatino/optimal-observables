@@ -1,5 +1,4 @@
 import os
-from argparse import Namespace
 
 import numpy as np
 import pandas as pd
@@ -9,9 +8,9 @@ from rich.console import Console
 from rich.progress import track
 from torch.utils.data import DataLoader
 
-from optimal_observables import classifier_config
-from optimal_observables.data import ClassifierDataset
-from optimal_observables.models import NNClassifier
+from optimal_observables.optimization import classifier_config
+from optimal_observables.optimization.data import ClassifierDataset
+from optimal_observables.optimization.models import NNClassifier
 
 if __name__ == "__main__":
     ckpts_base_path = "../data/model_ckpts"

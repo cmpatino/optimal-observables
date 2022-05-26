@@ -4,7 +4,7 @@ import awkward as ak
 import numpy as np
 from tqdm import tqdm
 
-import processing.kinematics as kinematics
+from optimal_observables.reconstruction import kinematics
 
 
 def select_jet(events) -> ak.Array:

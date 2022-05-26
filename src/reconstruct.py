@@ -6,10 +6,9 @@ import numpy as np
 import uproot
 from tqdm import tqdm
 
-from reconstruction import config
-from processing import event_selection
-from reconstruction.objects import MET, Particle
-from reconstruction.ttbar_dilepton import M_ELECTRON, M_MUON, reconstruct_event
+from optimal_observables.reconstruction import config, event_selection
+from optimal_observables.reconstruction.objects import MET, Particle
+from optimal_observables.reconstruction.ttbar_dilepton import M_ELECTRON, M_MUON, reconstruct_event
 
 if __name__ == "__main__":
     sm_path = os.path.join(

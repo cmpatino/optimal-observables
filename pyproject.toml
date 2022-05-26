@@ -1,2 +1,28 @@
 [tool.isort]
 profile = "black"
+
+[build-system]
+requires = ["flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"
+
+[project]
+name = "optimal_observables"
+authors = [
+    {name = "Carlos Miguel Patiño", email = "carlosmiguelpatino@gmail.com"},
+]
+readme = "README.md"
+requires-python = ">=3.9"
+
+dynamic = ["version", "description"]
+
+dependencies = [
+    "numpy>=1.20.3",
+    "jax>=0.2.26",
+    "awkward>=1.7.0",
+    "tqdm>=4.62.3",
+    "matplotlib>=3.5.1",
+    "torch>=1.9.0",
+    "torchmetrics>=0.6.1",
+    "pytorch_lightning>=1.5.5",
+    "uproot>=4.1.9",
+]
