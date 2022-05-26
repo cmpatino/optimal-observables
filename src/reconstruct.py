@@ -4,6 +4,7 @@ from collections import defaultdict
 import awkward as ak
 import numpy as np
 import uproot
+from rich.console import Console
 from tqdm import tqdm
 
 from config import root_file_path, recos_output_dir, random_seed
@@ -16,12 +17,12 @@ if __name__ == "__main__":
         os.makedirs(recos_output_dir)
     n_batches = 10
 
-    print("Loading events...", end="\r")
+    console = Console()
+    console.print("Loading events...", style="bold yellow")
     sm_events = uproot.open(root_file_path)["Delphes"]
-    print("Loading events...Done")
+    console.print("Loading events...Done\n", style="bold green")
 
-    print("Applying selection criteria...", end="\r")
-    # Apply ATLAS selection criteria
+    console.print("Applying selection criteria...", style="bold yellow")
     electron_mask = event_selection.select_electron(sm_events)
     muon_mask = event_selection.select_muon(sm_events)
     jets_mask = event_selection.select_jet(sm_events)
@@ -76,11 +77,12 @@ if __name__ == "__main__":
         phi=[np.array(event) for event in met_phi],
     )
 
-    print("Applying selection criteria...Done")
+    console.print("Applying selection criteria...Done\n", style="bold green")
 
+    console.print("Reconstructing events...", style="bold yellow")
     step_size = len(muon_phi) // n_batches
     rng = np.random.default_rng(random_seed)
-    for batch_idx in tqdm(range(n_batches)):
+    for batch_idx in tqdm(range(n_batches), desc="Reconstructing events"):
         init_idx = batch_idx * step_size
         end_idx = init_idx + step_size
         reconstructed_events = [
@@ -92,7 +94,7 @@ if __name__ == "__main__":
                 idx=idx,
                 rng=rng,
             )
-            for idx in tqdm(range(init_idx, end_idx), leave=False)
+            for idx in tqdm(range(init_idx, end_idx), leave=False, desc="Resconstructing batch")
         ]
 
         recos = defaultdict(list)
@@ -113,3 +115,4 @@ if __name__ == "__main__":
             ) as f:
                 np.save(f, p_array)
         del recos, reco_arrays, reconstructed_events
+    console.print("Reconstructing events...Done", style="bold green")
