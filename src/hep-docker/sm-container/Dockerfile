@@ -1,4 +1,5 @@
-FROM ubuntu:18.04
+#FROM ubuntu:18.04
+FROM python:3.9-buster
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -19,7 +20,7 @@ RUN apt-get update \
     libjpeg-dev \
     libkrb5-dev \
     libldap2-dev \
-    libmysqlclient-dev \
+    #libmysqlclient-dev \
     libpcre3-dev \
     libpng-dev \
     libqt4-dev \
@@ -35,7 +36,7 @@ RUN apt-get update \
     libxpm-dev \
     libxt-dev \
     make \
-    python-dev \
+    #python-dev \
     rsync \
     tcl \
     wget \
@@ -46,24 +47,25 @@ RUN mkdir -p /opt \
  && curl -sL https://root.cern/download/root_v6.18.00.Linux-ubuntu18-x86_64-gcc7.4.tar.gz | tar -C /opt -zxf -
 
 #Install MadGraph 5 and pythia8 (through MadGraph5)
-RUN curl -sL https://launchpad.net/mg5amcnlo/2.0/2.7.x/+download/MG5_aMC_v2.7.3.tar.gz | tar -C /opt -zxf - \
-     && echo "install pythia8\nexit" | /opt/MG5_aMC_v2_7_3/bin/mg5_aMC \
+RUN pip install six \ 
+     && curl -sL https://launchpad.net/mg5amcnlo/3.0/3.4.x/+download/MG5_aMC_v3.4.0.tar.gz | tar -C /opt -zxf - \
+     && echo "install pythia8\nexit" | /opt/MG5_aMC_v3_4_0/bin/mg5_aMC \
      && export LD_LIBRARY_PATH=/home/carlosmiguelpatino/Software/MadGraph5/HEPTools/lhapdf6_py3/lib
 
 ENV ROOTSYS=/opt/root
 ENV PATH=$ROOTSYS/bin:$PATH
 ENV PYTHONPATH=$ROOTSYS/lib:$PYTHONPATH
 ENV LD_LIBRARY_PATH=$ROOTSYS/lib:$LD_LIBRARY_PATH
-ENV PYTHIA8=/opt/MG5_aMCv2_7_3/pythia8
+ENV PYTHIA8=/opt/MG5_aMCv3_4_0/pythia8
 
 # Install Delphes
-RUN git clone https://github.com/delphes/delphes.git /opt/MG5_aMC_v2_7_3/Delphes \
-    && cd /opt/MG5_aMC_v2_7_3/Delphes \
+RUN git clone https://github.com/delphes/delphes.git /opt/MG5_aMC_v3_4_0/Delphes \
+    && cd /opt/MG5_aMC_v3_4_0/Delphes \
     && make -j4
 
 
-RUN echo alias mg5_aMC=\"/opt/MG5_aMC_v2_7_3/bin/mg5_aMC\" >> ~/.bash_aliases
+RUN echo alias mg5_aMC=\"/opt/MG5_aMC_v3_4_0/bin/mg5_aMC\" >> ~/.bash_aliases
 
 RUN mkdir /generated_events
 
-COPY madspin_card_default.dat /opt/MG5_aMC_v2_7_3/Template/Common/Cards/madspin_card_default.dat
+COPY madspin_card_default.dat /opt/MG5_aMC_v3_4_0/Template/Common/Cards/madspin_card_default.dat
