@@ -1,5 +1,8 @@
 # Event Generation Commands
 
+0. Build container
+    1. docker build . -t optimal-observables --platform linux/x86_64
+
 1. Run Container
     1. sudo docker run -it hep-sw
 
