@@ -2,7 +2,7 @@ from typing import List
 
 import numpy as np
 
-from processing import event_selection
+from optimal_observables.reconstruction import event_selection
 
 
 def four_momentum(pt: np.ndarray, phi: np.ndarray, eta: np.ndarray,

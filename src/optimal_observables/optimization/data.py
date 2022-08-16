@@ -4,7 +4,7 @@ from typing import Dict, List
 import numpy as np
 from torch.utils.data import Dataset
 
-from optimal_observables import observables
+from optimal_observables.optimization import observables
 
 
 def load_numpy_recos(reconstruction_paths: List[str]) -> Dict[str, np.ndarray]:

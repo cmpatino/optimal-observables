@@ -1,69 +1,83 @@
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 
-ENV DEBIAN_FRONTEND=noninteractive
+USER root
+WORKDIR /root
 
-RUN apt-get update \
- && apt-get install -yq \
-    cmake \
-    curl \
-    g++ \
-    gfortran \
-    git \
-    graphviz-dev \
-    libcfitsio-dev \
-    libfftw3-dev \
-    libftgl-dev \
-    libglew-dev \
-    libglu1-mesa-dev \
-    libgsl-dev \
-    libjpeg-dev \
-    libkrb5-dev \
-    libldap2-dev \
-    libmysqlclient-dev \
-    libpcre3-dev \
-    libpng-dev \
-    libqt4-dev \
-    libqt4-opengl-dev \
-    libssl-dev \
-    libtbb-dev \
-    libx11-dev \
-    libxext-dev \
-    libxft-dev \
-    libxi-dev \
-    libxml2-dev \
-    libxmu-dev \
-    libxpm-dev \
-    libxt-dev \
-    make \
-    python-dev \
-    rsync \
-    tcl \
-    wget \
-    vim
+SHELL [ "/bin/bash", "-c" ]
+
+ARG PYTHON_VERSION_TAG=3.10.5
+ARG LINK_PYTHON_TO_PYTHON3=1
+
+# Existing lsb_release causes issues with modern installations of Python3
+# https://github.com/pypa/pip/issues/4924#issuecomment-435825490
+# Set (temporarily) DEBIAN_FRONTEND to avoid interacting with tzdata
+RUN apt-get -qq -y update && \
+    DEBIAN_FRONTEND=noninteractive apt-get -qq -y install \
+        gcc \
+        g++ \
+        gfortran \
+        zlibc \
+        zlib1g-dev \
+        libssl-dev \
+        libx11-dev \
+        libxpm-dev \
+        libxft-dev \
+        libxext-dev \
+        libssl-dev \
+        libbz2-dev \
+        libsqlite3-dev \
+        libncurses5-dev \
+        libgdbm-dev \
+        libgdbm-compat-dev \
+        liblzma-dev \
+        libreadline-dev \
+        uuid-dev \
+        libffi-dev \
+        tk-dev \
+        wget \
+        curl \
+        git \
+        make \
+        cmake \
+        sudo \
+        bash-completion \
+        tree \
+        vim \
+        software-properties-common \
+        bc && \
+    mv /usr/bin/lsb_release /usr/bin/lsb_release.bak && \
+    apt-get -y autoclean && \
+    apt-get -y autoremove && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY install_python.sh install_python.sh
+RUN bash install_python.sh ${PYTHON_VERSION_TAG} ${LINK_PYTHON_TO_PYTHON3} && \
+    rm -r install_python.sh Python-${PYTHON_VERSION_TAG}
+
+RUN python -m pip --no-cache-dir install --upgrade pip setuptools wheel && \
+    python -m pip --no-cache-dir install six numpy
 
 # Install ROOT
-RUN mkdir -p /opt \
- && curl -sL https://root.cern/download/root_v6.18.00.Linux-ubuntu18-x86_64-gcc7.4.tar.gz | tar -C /opt -zxf -
+RUN cd /opt && \
+    mkdir root && \
+    cd root && \
+    wget https://root.cern/download/root_v6.26.06.Linux-ubuntu20-x86_64-gcc9.4.tar.gz && \
+    tar -xzf root_v6.26.06.Linux-ubuntu20-x86_64-gcc9.4.tar.gz --strip=1
 
-#Install MadGraph 5 and pythia8 (through MadGraph5)
-RUN curl -sL https://launchpad.net/mg5amcnlo/2.0/2.7.x/+download/MG5_aMC_v2.7.3.tar.gz | tar -C /opt -zxf - \
-     && echo "install pythia8\nexit" | /opt/MG5_aMC_v2_7_3/bin/mg5_aMC \
-     && export LD_LIBRARY_PATH=/home/carlosmiguelpatino/Software/MadGraph5/HEPTools/lhapdf6_py3/lib
+# Install MadGraph 5 and pythia8 (through MadGraph5)
+ARG MG_VERSION=3.4.0
+RUN cd /opt && \
+    mkdir MG5_aMC && \
+    cd MG5_aMC && \wget --quiet https://launchpad.net/mg5amcnlo/3.0/3.4.x/+download/MG5_aMC_v${MG_VERSION}.tar.gz && \ 
+    tar -xzf MG5_aMC_v${MG_VERSION}.tar.gz --strip=1 && \
+    rm MG5_aMC_v${MG_VERSION}.tar.gz && \
+    printf '\nexport PATH=/opt/MG5_aMC/bin:"${PATH}"\n' >> /root/.bashrc
 
 ENV ROOTSYS=/opt/root
 ENV PATH=$ROOTSYS/bin:$PATH
 ENV PYTHONPATH=$ROOTSYS/lib:$PYTHONPATH
 ENV LD_LIBRARY_PATH=$ROOTSYS/lib:$LD_LIBRARY_PATH
-ENV PYTHIA8=/opt/MG5_aMCv2_7_3/pythia8
+ENV PYTHIA8=/opt/MG5_aMC/pythia8
 
-# Install Delphes
-RUN git clone https://github.com/delphes/delphes.git /opt/MG5_aMC_v2_7_3/Delphes \
-    && cd /opt/MG5_aMC_v2_7_3/Delphes \
-    && make -j4
-
-
-RUN echo alias mg5_aMC=\"/opt/MG5_aMC_v2_7_3/bin/mg5_aMC\" >> ~/.bash_aliases
-
-RUN mkdir /generated_events
-
-COPY madspin_card_default.dat /opt/MG5_aMC_v2_7_3/Template/Common/Cards/madspin_card_default.dat
+ENTRYPOINT ["/bin/bash", "-l", "-c"]
+CMD ["/bin/bash"]

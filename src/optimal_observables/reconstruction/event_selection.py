@@ -4,7 +4,7 @@ import awkward as ak
 import numpy as np
 from tqdm import tqdm
 
-import processing.kinematics as kinematics
+from optimal_observables.reconstruction import kinematics
 
 
 def select_jet(events) -> ak.Array:
@@ -47,7 +47,7 @@ def get_jet_to_lepton_mask(
     lepton_eta = events[f"{lepton}.Eta"].array()
 
     lepton_dR_mask = []
-    for event_idx in tqdm(range(len(lepton_phi))):
+    for event_idx in tqdm(range(len(lepton_phi)), desc=f"Jet-{lepton} Separation"):
         jet_phi_idx = np.array(jet_phi[event_idx])
         jet_eta_idx = np.array(jet_eta[event_idx])
         lepton_dR_event_mask = np.ones_like(jet_phi_idx, dtype=int)
@@ -102,7 +102,7 @@ def get_electron_to_jet_mask(events) -> ak.Array:
     electron_eta = events["Electron.Eta"].array()
 
     jet_dR_mask = []
-    for event_idx in tqdm(range(len(electron_phi))):
+    for event_idx in tqdm(range(len(electron_phi)), desc="Electron-Jet Separation"):
         electron_phi_idx = np.array(electron_phi[event_idx])
         electron_eta_idx = np.array(electron_eta[event_idx])
         jet_dR_event_mask = np.ones_like(electron_phi_idx, dtype=int)

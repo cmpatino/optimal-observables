@@ -6,9 +6,9 @@ from pytorch_lightning.loggers import MLFlowLogger
 from pytorch_lightning.callbacks import RichProgressBar, RichModelSummary
 from torch.utils.data import DataLoader, random_split
 
-from optimal_observables import classifier_config
-from optimal_observables.data import ClassifierDataset
-from optimal_observables.models import NNClassifier
+from optimal_observables.optimization import classifier_config
+from optimal_observables.optimization.data import ClassifierDataset
+from optimal_observables.optimization.models import NNClassifier
 
 full_dataset = ClassifierDataset(**classifier_config.dataset_config)
 n_train = int(len(full_dataset) * 0.7)

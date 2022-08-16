@@ -5,8 +5,8 @@ import jax.numpy as jnp
 import numpy as np
 from jax import jit
 
-from processing import kinematics
-from reconstruction.objects import MET, Particle, ReconstructedEvent
+from optimal_observables.reconstruction import kinematics
+from optimal_observables.reconstruction.objects import MET, Particle, ReconstructedEvent
 
 M_W = 80.4
 M_ELECTRON = 0.000510998902
@@ -134,7 +134,7 @@ def solve_quadratic_equation(
     b_c = b.astype(jnp.complex64)
     c_c = c.astype(jnp.complex64)
 
-    det = jnp.sqrt(b_c ** 2 - (4 * a_c * c_c))
+    det = jnp.sqrt(b_c**2 - (4 * a_c * c_c))
     sol1 = ((-b_c) + det) / (2 * a_c)
     sol2 = ((-b_c) - det) / (2 * a_c)
     return jnp.concatenate([sol1, sol2], axis=1)
@@ -172,15 +172,15 @@ def solve_p_nu(
     A = (p_l[:, 1:2] * E_b_prime - p_b[:, 1:2] * E_l_prime) / den
 
     l_b_prod = scalar_product(p1=p_l, p2=p_b)
-    alpha = m_t ** 2 - m_w ** 2 - m_b ** 2 - 2 * l_b_prod
-    B = (E_l_prime * alpha - E_b_prime * m_w ** 2) / (-2 * den)
+    alpha = m_t**2 - m_w**2 - m_b**2 - 2 * l_b_prod
+    B = (E_l_prime * alpha - E_b_prime * m_w**2) / (-2 * den)
 
     par1 = (p_l[:, 0:1] * A + p_l[:, 1:2]) / E_l_prime
-    C = A ** 2 + 1 - par1 ** 2
+    C = A**2 + 1 - par1**2
 
-    par2 = ((m_w ** 2) / 2 + p_l[:, 0:1] * B) / E_l_prime
+    par2 = ((m_w**2) / 2 + p_l[:, 0:1] * B) / E_l_prime
     D = 2 * (A * B - par2 * par1)
-    F = B ** 2 - par2 ** 2
+    F = B**2 - par2**2
 
     sols = solve_quadratic_equation(a=C, b=D, c=F)
 
@@ -212,8 +212,8 @@ def solution_weight(
     """
     dx = met_x - neutrino_px
     dy = met_y - neutrino_py
-    weight_x = np.exp(-(dx ** 2) / (2 * SIGMA_X ** 2))
-    weight_y = np.exp(-(dy ** 2) / (2 * SIGMA_Y ** 2))
+    weight_x = np.exp(-(dx**2) / (2 * SIGMA_X**2))
+    weight_y = np.exp(-(dy**2) / (2 * SIGMA_Y**2))
     return weight_x * weight_y
 
 
