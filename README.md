@@ -8,7 +8,7 @@ The second method uses machine learning-based techniques. Machine learning model
 
 Symbolic regression can bridge the gap between closed-form expressions and neural networks to generate observables optimized in high-dimensional spaces that we then approximate with an analytical expression. Bridging this gap allows us to learn optimal observables through the power of machine learning while being able to extract physical meaning from the function learned by the model.
 
-**This is a work in progress.**
+**This is a work in progress by Carlos Miguel Patiño and Michael Fenton**
 
 ## Tech Stack
 + [JAX](https://github.com/google/jax)
