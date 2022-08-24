@@ -40,10 +40,17 @@ RUN apt-get -qq -y update && \
 COPY --from=0 /root/Delphes-3.4.2 /root/Delphes-3.4.2
 COPY --from=0 /root/MG5_aMC_v2_7_3 /root/MG5_aMC_v2_7_3
 COPY --from=0 /root/root_py3 /root/root_py3
+COPY --from=0 /root/root_py2 /root/root_py2
 
 RUN conda create -n mg5 python=2.7 
 
 RUN printf '\nexport PATH=/root/MG5_aMC_v2_7_3/bin:"${PATH}"\n' >> /root/.bashrc
 
-# COPY ./optimal_observables-0.1-py3-none-any.whl .
-# RUN pip install ./optimal_observables-0.1-py3-none-any.whl
+COPY ./reco_code /root/reco_code
+
+RUN cd /root/reco_code && \
+    pip install -r requirements.txt
+
+WORKDIR /root/reco_code
+ENTRYPOINT ["/bin/bash", "-l", "-c"]
+CMD ["/bin/bash"]
