@@ -16,20 +16,16 @@ def hist_n_particles(q: List[int], label: str) -> Figure:
     :rtype: Figure
     """
 
-    fig, ax = plt.subplots(
-        nrows=1,
-        figsize=(15, 8)
-    )
+    fig, ax = plt.subplots(nrows=1, figsize=(15, 8))
 
     bins, edges = np.histogram(q, bins=15, range=(0, 15))
 
     for idx, val in enumerate(bins[::-1]):
         if val > 0:
             max_idx = len(bins) - idx - 1
+            edges = edges[:max_idx]
+            bins = bins[:max_idx]
             break
-
-    edges = edges[:max_idx]
-    bins = bins[:max_idx]
 
     ax.bar(edges, bins, width=1, alpha=0.6)
     ax.set_title(label, fontsize=20, y=1.04)
@@ -50,12 +46,7 @@ def hist_var(q: List[float], ax: plt.Axes, **kwargs) -> plt.Axes:
     """
 
     bins, edges, _ = ax.hist(
-        q,
-        alpha=0.6,
-        histtype="step",
-        align="left",
-        linewidth=4,
-        **kwargs
+        q, alpha=0.6, histtype="step", align="left", linewidth=4, **kwargs
     )
     errors = np.sqrt(bins)
     bin_width = edges[1] - edges[0]
@@ -66,8 +57,8 @@ def hist_var(q: List[float], ax: plt.Axes, **kwargs) -> plt.Axes:
         height=errors,
         width=bin_width,
         alpha=0.0,
-        color='w',
-        hatch='/'
+        color="w",
+        hatch="/",
     )
     ax.bar(
         x=edges[:-1],
@@ -75,15 +66,21 @@ def hist_var(q: List[float], ax: plt.Axes, **kwargs) -> plt.Axes:
         height=-errors,
         width=bin_width,
         alpha=0.0,
-        color='w',
-        hatch='/'
+        color="w",
+        hatch="/",
     )
     return ax
 
 
-def ratio_hist(processes_q: List[List[float]], hist_labels: List[str],
-               reference_label: str, n_bins: int, hist_range: Tuple[int, int],
-               title: str, figsize=(15, 8)) -> Figure:
+def ratio_hist(
+    processes_q: List[List[float]],
+    hist_labels: List[str],
+    reference_label: str,
+    n_bins: int,
+    hist_range: Tuple[int, int],
+    title: str,
+    figsize=(15, 8),
+) -> Figure:
     """Generate histrograms with ratio pad
 
     :param processes_q: Quantity for each event and process
@@ -105,11 +102,11 @@ def ratio_hist(processes_q: List[List[float]], hist_labels: List[str],
     """
 
     fig, ax = plt.subplots(
-            nrows=len(processes_q),
-            ncols=1,
-            gridspec_kw={'height_ratios': [3] + [1]*(len(processes_q) - 1)},
-            sharex=True,
-            figsize=figsize
+        nrows=len(processes_q),
+        ncols=1,
+        gridspec_kw={"height_ratios": [3] + [1] * (len(processes_q) - 1)},
+        sharex=True,
+        figsize=figsize,
     )
     legends = []
 
@@ -127,9 +124,9 @@ def ratio_hist(processes_q: List[List[float]], hist_labels: List[str],
             range=hist_range,
             fill=False,
             label=label,
-            align='left',
-            histtype='step',
-            linewidth=4
+            align="left",
+            histtype="step",
+            linewidth=4,
         )
         p_bins[label] = bins
         p_edges[label] = edges
@@ -145,8 +142,8 @@ def ratio_hist(processes_q: List[List[float]], hist_labels: List[str],
             height=p_errors[label],
             width=bin_width,
             alpha=0.0,
-            color='w',
-            hatch='/'
+            color="w",
+            hatch="/",
         )
         ax[0].bar(
             x=p_edges[label][:-1],
@@ -154,10 +151,10 @@ def ratio_hist(processes_q: List[List[float]], hist_labels: List[str],
             height=-p_errors[label],
             width=bin_width,
             alpha=0.0,
-            color='w',
-            hatch='/'
+            color="w",
+            hatch="/",
         )
-        legends += ['_', '_']
+        legends += ["_", "_"]
 
     ax[0].set_ylabel("Events", fontsize=15)
     ax[0].set_title(title, fontsize=20)
@@ -167,12 +164,12 @@ def ratio_hist(processes_q: List[List[float]], hist_labels: List[str],
     plot_idx = 1
     ref_bins = p_bins[reference_label]
     ref_edges = p_edges[reference_label]
-    ref_frac_error = p_errors[reference_label]/ref_bins
+    ref_frac_error = p_errors[reference_label] / ref_bins
     for label in hist_labels:
         if label == reference_label:
             continue
-        ratios = p_bins[label]/ref_bins
-        error_ratio = ratios * (ref_frac_error + p_errors[label]/p_bins[label])
+        ratios = p_bins[label] / ref_bins
+        error_ratio = ratios * (ref_frac_error + p_errors[label] / p_bins[label])
 
         ax[plot_idx].bar(
             bottom=1.0,
@@ -180,7 +177,7 @@ def ratio_hist(processes_q: List[List[float]], hist_labels: List[str],
             x=ref_edges[:-1],
             width=bin_width,
             alpha=0.3,
-            color="blue"
+            color="blue",
         )
         ax[plot_idx].bar(
             bottom=1.0,
@@ -188,8 +185,10 @@ def ratio_hist(processes_q: List[List[float]], hist_labels: List[str],
             x=ref_edges[:-1],
             width=bin_width,
             alpha=0.3,
-            color="blue"
+            color="blue",
         )
-        ax[plot_idx].scatter(ref_edges[:-1], ratios, marker='o', color="black")
+        ax[plot_idx].scatter(ref_edges[:-1], ratios, marker="o", color="black")
         ax[plot_idx].set_ylabel(f"{label}/{reference_label}")
         plot_idx += 1
+
+    return fig
