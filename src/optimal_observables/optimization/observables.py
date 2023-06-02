@@ -79,3 +79,19 @@ def get_angles_matrix(p_l_t, p_l_tbar, p_top, p_tbar, only_cosine_terms=False):
     if only_cosine_terms:
         return obs_matrix[:, :6]
     return obs_matrix
+
+
+def get_mtt(p_top: np.ndarray, p_tbar: np.ndarray) -> np.ndarray:
+    """Calculate the invariant mass of the top quark pair.
+
+    :param p_top: Four momentum of the top quark.
+    :type p_top: np.ndarray
+    :param p_tbar: Four momentum of the anti-top quark.
+    :type p_tbar: np.ndarray
+    :return: Invariant mass of the top quark pair.
+    :rtype: np.ndarray
+    """
+    p_ttbar = p_top + p_tbar
+    space_component = np.sum(p_ttbar[:, :3] ** 2, axis=1, keepdims=True)
+    energy_component = p_ttbar[:, 3:] ** 2
+    return np.sqrt(energy_component - space_component)
