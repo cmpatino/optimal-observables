@@ -7,7 +7,7 @@ import uproot
 from rich.console import Console
 from tqdm import tqdm
 
-from config import root_file_path, recos_output_dir, random_seed
+from reco_config import root_file_path, recos_output_dir, random_seed
 import event_selection
 from objects import MET, Particle
 from ttbar_dilepton import M_ELECTRON, M_MUON, reconstruct_event

@@ -46,11 +46,11 @@ RUN conda create -n mg5 python=2.7
 
 RUN printf '\nexport PATH=/root/MG5_aMC_v2_7_3/bin:"${PATH}"\n' >> /root/.bashrc
 
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
 COPY ./reco_code /root/reco_code
-
-RUN cd /root/reco_code && \
-    pip install -r requirements.txt
-
 WORKDIR /root/reco_code
+
 ENTRYPOINT ["/bin/bash", "-l", "-c"]
 CMD ["/bin/bash"]
