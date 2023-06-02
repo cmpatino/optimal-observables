@@ -150,3 +150,6 @@ lightning_logs/
 model_ckpts/
 mlruns/
 config.py
+
+# Ignore artifacts
+artifacts/
