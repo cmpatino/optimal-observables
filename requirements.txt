@@ -3,6 +3,7 @@ jax>=0.2.26
 jaxlib>=0.3.0
 matplotlib>=3.5.1
 numpy>=1.20.3
+pysr==0.14.0
 pytorch_lightning>=1.5.5
 rich>=10.16.0
 tqdm>=4.62.3
