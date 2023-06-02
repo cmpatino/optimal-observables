@@ -3,7 +3,7 @@ import numpy as np
 
 def boost_to_frame(p_particle, p_frame):
     b = -p_frame[:, :3] / p_frame[:, 3:]
-    b2 = np.sum(b ** 2, axis=1, keepdims=True)
+    b2 = np.sum(b**2, axis=1, keepdims=True)
     gamma = 1 / np.sqrt(1 - b2)
     bp = np.sum(p_particle[:, :3] * b, axis=1, keepdims=True)
     gamma2 = np.clip((gamma - 1) / b2, a_min=0, a_max=None)
@@ -46,7 +46,7 @@ def calculate_cosine_obs(p_particle, k_hat, r_hat, n_hat):
     return cos_k, cos_r, cos_n
 
 
-def get_matrix(p_l_t, p_l_tbar, p_top, p_tbar, only_cosine_terms=False):
+def get_angles_matrix(p_l_t, p_l_tbar, p_top, p_tbar, only_cosine_terms=False):
     p_top_com, p_tbar_com, p_com = boost_to_com(p_top, p_tbar)
     k_hat, r_hat, n_hat = create_basis(p_top_com)
 
