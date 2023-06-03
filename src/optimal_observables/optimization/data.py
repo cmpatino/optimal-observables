@@ -7,6 +7,74 @@ from torch.utils.data import Dataset
 from optimal_observables.optimization import observables
 
 
+class ReconstructionLoader:
+    def __init__(self, reconstruction_paths: List[str]) -> None:
+        self.reconstruction_paths = reconstruction_paths
+
+    def load(self) -> Dict[str, np.ndarray]:
+        reco_names = [
+            "p_top",
+            "p_l_t",
+            "p_b_t",
+            "p_nu_t",
+            "p_tbar",
+            "p_l_tbar",
+            "p_b_tbar",
+            "p_nu_tbar",
+            "idx",
+            "weight",
+        ]
+
+        recos = dict()
+
+        batches = {name: [] for name in reco_names}
+        for reconstruction_path in self.reconstruction_paths:
+            for batch_idx in range(10):
+                for name in reco_names:
+                    batches[name].append(
+                        np.load(
+                            os.path.join(
+                                reconstruction_path, f"{name}_batch_{batch_idx}.npy"
+                            )
+                        )
+                    )
+        recos = {
+            name: np.concatenate(batches, axis=0) for name, batches in batches.items()
+        }
+        return recos
+
+
+class BenchmarkDataLoader:
+    def __init__(
+        self,
+        pos_reconstruction_paths: List[str],
+        neg_reconstruction_paths: List[str],
+    ):
+        self.pos_recos = ReconstructionLoader(
+            reconstruction_paths=pos_reconstruction_paths
+        ).load()
+        self.neg_recos = ReconstructionLoader(
+            reconstruction_paths=neg_reconstruction_paths
+        ).load()
+
+    def load(self):
+        dPhi_pos = observables.get_dPhi_ll(
+            p_l_t=self.pos_recos["p_l_t"],
+            p_l_tbar=self.pos_recos["p_l_tbar"],
+        )
+        dPhi_neg = observables.get_dPhi_ll(
+            p_l_t=self.neg_recos["p_l_t"],
+            p_l_tbar=self.neg_recos["p_l_tbar"],
+        )
+        X = np.concatenate([dPhi_pos, dPhi_neg], axis=0)
+        y = np.concatenate(
+            [np.ones(dPhi_pos.shape[0]), np.zeros(dPhi_neg.shape[0])], axis=0
+        )
+        # We need to reverse the labels because the score is larger for negatives
+        y = (y == 0).astype(int)
+        return X, y
+
+
 class DataGenerator:
     def __init__(
         self,
@@ -15,12 +83,12 @@ class DataGenerator:
         only_cosine_terms: bool = True,
         include_mtt: bool = True,
     ):
-        pos_recos = self._load_numpy_recos(
+        pos_recos = ReconstructionLoader(
             reconstruction_paths=pos_reconstruction_paths
-        )
-        neg_recos = self._load_numpy_recos(
+        ).load()
+        neg_recos = ReconstructionLoader(
             reconstruction_paths=neg_reconstruction_paths
-        )
+        ).load()
         self.feature_names = [
             "cos_k1",
             "cos_k2",
@@ -77,40 +145,6 @@ class DataGenerator:
 
     def generate_data(self):
         return self.X, self.y
-
-    def _load_numpy_recos(
-        self, reconstruction_paths: List[str]
-    ) -> Dict[str, np.ndarray]:
-        reco_names = [
-            "p_top",
-            "p_l_t",
-            "p_b_t",
-            "p_nu_t",
-            "p_tbar",
-            "p_l_tbar",
-            "p_b_tbar",
-            "p_nu_tbar",
-            "idx",
-            "weight",
-        ]
-
-        recos = dict()
-
-        batches = {name: [] for name in reco_names}
-        for reconstruction_path in reconstruction_paths:
-            for batch_idx in range(10):
-                for name in reco_names:
-                    batches[name].append(
-                        np.load(
-                            os.path.join(
-                                reconstruction_path, f"{name}_batch_{batch_idx}.npy"
-                            )
-                        )
-                    )
-        recos = {
-            name: np.concatenate(batches, axis=0) for name, batches in batches.items()
-        }
-        return recos
 
 
 class NNDataset(Dataset):
