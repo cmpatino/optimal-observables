@@ -1,5 +1,7 @@
 import numpy as np
 
+from optimal_observables.reconstruction import kinematics
+
 
 def boost_to_frame(p_particle, p_frame):
     b = -p_frame[:, :3] / p_frame[:, 3:]
@@ -46,7 +48,7 @@ def calculate_cosine_obs(p_particle, k_hat, r_hat, n_hat):
     return cos_k, cos_r, cos_n
 
 
-def get_angles_matrix(p_l_t, p_l_tbar, p_top, p_tbar, only_cosine_terms=False):
+def get_angles_matrix(p_l_t, p_l_tbar, p_top, p_tbar, include_cosine_prods=False):
     p_top_com, p_tbar_com, p_com = boost_to_com(p_top, p_tbar)
     k_hat, r_hat, n_hat = create_basis(p_top_com)
 
@@ -57,27 +59,24 @@ def get_angles_matrix(p_l_t, p_l_tbar, p_top, p_tbar, only_cosine_terms=False):
     cos_k2, cos_r2, cos_n2 = calculate_cosine_obs(p_l_tbar_frame, k_hat, r_hat, n_hat)
 
     obs_matrix = np.concatenate(
-        [
-            cos_k1,
-            cos_k2,
-            cos_r1,
-            cos_r2,
-            cos_n1,
-            cos_n2,
-            cos_k1 * cos_k2,
-            cos_r1 * cos_r2,
-            cos_n1 * cos_n2,
-            (cos_r1 * cos_k2) + (cos_k1 * cos_r2),
-            (cos_r1 * cos_k2) - (cos_k1 * cos_r2),
-            (cos_n1 * cos_r2) + (cos_r1 * cos_n2),
-            (cos_n1 * cos_r2) - (cos_r1 * cos_n2),
-            (cos_n1 * cos_k2) + (cos_k1 * cos_n2),
-            (cos_n1 * cos_k2) - (cos_k1 * cos_n2),
-        ],
-        axis=1,
+        [cos_k1, cos_k2, cos_r1, cos_r2, cos_n1, cos_n2], axis=1
     )
-    if only_cosine_terms:
-        return obs_matrix[:, :6]
+    if include_cosine_prods:
+        obs_matrix = np.concatenate(
+            [
+                obs_matrix,
+                cos_k1 * cos_k2,
+                cos_r1 * cos_r2,
+                cos_n1 * cos_n2,
+                (cos_r1 * cos_k2) + (cos_k1 * cos_r2),
+                (cos_r1 * cos_k2) - (cos_k1 * cos_r2),
+                (cos_n1 * cos_r2) + (cos_r1 * cos_n2),
+                (cos_n1 * cos_r2) - (cos_r1 * cos_n2),
+                (cos_n1 * cos_k2) + (cos_k1 * cos_n2),
+                (cos_n1 * cos_k2) - (cos_k1 * cos_n2),
+            ],
+            axis=1,
+        )
     return obs_matrix
 
 
@@ -95,3 +94,10 @@ def get_mtt(p_top: np.ndarray, p_tbar: np.ndarray) -> np.ndarray:
     space_component = np.sum(p_ttbar[:, :3] ** 2, axis=1, keepdims=True)
     energy_component = p_ttbar[:, 3:] ** 2
     return np.sqrt(energy_component - space_component)
+
+
+def get_dPhi_ll(p_l_t: np.ndarray, p_l_tbar: np.ndarray):
+    phi_l_t = kinematics.phi(p_l_t)
+    phi_l_tbar = kinematics.phi(p_l_tbar)
+    dPhi_ll = kinematics.normalize_dPhi(phi_l_tbar - phi_l_t).reshape(-1, 1)
+    return dPhi_ll
