@@ -75,7 +75,7 @@ class BenchmarkDataLoader:
         return X, y
 
 
-class DataGenerator:
+class ClassifierDataLoader:
     def __init__(
         self,
         pos_reconstruction_paths: List[str],
@@ -143,16 +143,16 @@ class DataGenerator:
             [np.ones(len(pos_matrix)), np.zeros(len(neg_matrix))]
         ).reshape(-1, 1)
 
-    def generate_data(self):
+    def load(self):
         return self.X, self.y
 
 
 class NNDataset(Dataset):
     def __init__(
         self,
-        data_generator: DataGenerator,
+        data_loader: ClassifierDataLoader,
     ):
-        self.X, self.y = data_generator.generate_data()
+        self.X, self.y = data_loader.load()
         self.input_features = self.X.shape[1]
 
     def __len__(self) -> int:
