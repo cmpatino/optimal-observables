@@ -96,6 +96,20 @@ def get_mtt(p_top: np.ndarray, p_tbar: np.ndarray) -> np.ndarray:
     return np.sqrt(energy_component - space_component)
 
 
+def get_pt_ttbar(p_top: np.ndarray, p_tbar: np.ndarray) -> np.ndarray:
+    """Calculate the transverse momentum of the top quark pair.
+
+    :param p_top: Four momentum of the top quark.
+    :type p_top: np.ndarray
+    :param p_tbar: Four momentum of the anti-top quark.
+    :type p_tbar: np.ndarray
+    :return: Transverse momentum of the top quark pair.
+    :rtype: np.ndarray
+    """
+    p_ttbar = p_top + p_tbar
+    return np.linalg.norm(p_ttbar[:, :2], axis=1, keepdims=True)
+
+
 def get_dPhi_ll(p_l_t: np.ndarray, p_l_tbar: np.ndarray):
     phi_l_t = kinematics.phi(p_l_t)
     phi_l_tbar = kinematics.phi(p_l_tbar)

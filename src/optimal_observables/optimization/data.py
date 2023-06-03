@@ -82,6 +82,7 @@ class ClassifierDataLoader:
         neg_reconstruction_paths: List[str],
         include_cosine_prods: bool = True,
         include_mtt: bool = True,
+        include_pt: bool = True,
     ):
         pos_recos = ReconstructionLoader(
             reconstruction_paths=pos_reconstruction_paths
@@ -140,6 +141,18 @@ class ClassifierDataLoader:
             X_mtt = np.concatenate([pos_mtt, neg_mtt], axis=0)
             self.X = np.concatenate([self.X, X_mtt], axis=1)
             self.feature_names.append("m_tt")
+        if include_pt:
+            pos_pt = observables.get_pt_ttbar(
+                p_top=pos_recos["p_top"],
+                p_tbar=pos_recos["p_tbar"],
+            )
+            neg_pt = observables.get_pt_ttbar(
+                p_top=neg_recos["p_top"],
+                p_tbar=neg_recos["p_tbar"],
+            )
+            X_pt = np.concatenate([pos_pt, neg_pt], axis=0)
+            self.X = np.concatenate([self.X, X_pt], axis=1)
+            self.feature_names.append("pt")
 
         self.y = np.concatenate(
             [np.ones(len(pos_matrix)), np.zeros(len(neg_matrix))]
