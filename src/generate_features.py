@@ -2,7 +2,7 @@ import os
 
 import pandas as pd
 
-from datasets import load_dataset
+from huggingface_hub import HfApi
 
 from optimal_observables.optimization import data
 
@@ -40,12 +40,17 @@ if __name__ == "__main__":
 
     features_df = pd.DataFrame(X, columns=data_loader.feature_names)
     features_df["target"] = y
-    features_df.to_csv("../artifacts/all_features.csv", index=False)
+    features_df.to_parquet("../artifacts/all_features.parquet", index=False)
 
     X_pos = X[y.reshape(-1) == 1]
     X_neg = X[y.reshape(-1) == 0]
     labels = ["spin-ON", "spin-OFF"]
 
-    # Create HuggingFace dataset from CSV
-    dataset = load_dataset("csv", data_files="../artifacts/all_features.csv")
-    dataset.push_to_hub("cmpatino/optimal-observables")
+    # Update HuggingFace dataset from CSV
+    api = HfApi()
+    api.upload_file(
+        path_or_fileobj="../artifacts/all_features.parquet",
+        path_in_repo="data/all_features.parquet",
+        repo_id="cmpatino/optimal_observables",
+        repo_type="dataset",
+    )
