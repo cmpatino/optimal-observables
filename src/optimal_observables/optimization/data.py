@@ -1,10 +1,12 @@
 import os
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 import numpy as np
-from torch.utils.data import Dataset
+
+# from torch.utils.data import Dataset
 
 from optimal_observables.optimization import observables
+from optimal_observables.reconstruction import kinematics
 
 
 class ReconstructionLoader:
@@ -66,13 +68,13 @@ class BenchmarkDataLoader:
             p_l_t=self.neg_recos["p_l_t"],
             p_l_tbar=self.neg_recos["p_l_tbar"],
         )
-        X = np.concatenate([dPhi_pos, dPhi_neg], axis=0)
+        y_bench = np.concatenate([dPhi_pos, dPhi_neg], axis=0)
         y = np.concatenate(
             [np.ones(dPhi_pos.shape[0]), np.zeros(dPhi_neg.shape[0])], axis=0
         )
         # We need to reverse the labels because the score is larger for negatives
         y = (y == 0).astype(int)
-        return X, y
+        return y_bench, y
 
 
 class ClassifierDataLoader:
@@ -80,9 +82,15 @@ class ClassifierDataLoader:
         self,
         pos_reconstruction_paths: List[str],
         neg_reconstruction_paths: List[str],
-        include_cosine_prods: bool = True,
-        include_mtt: bool = True,
-        include_pt: bool = True,
+        include_cosine_prods: bool = False,
+        include_mtt: bool = False,
+        include_pt: bool = False,
+        include_dPhi: bool = False,
+        include_top_vecs: bool = False,
+        include_lepton_vecs: bool = False,
+        include_bjet_vecs: bool = False,
+        include_neutrino_vecs: bool = False,
+        include_reco_weights: bool = False,
     ):
         pos_recos = ReconstructionLoader(
             reconstruction_paths=pos_reconstruction_paths
@@ -101,15 +109,15 @@ class ClassifierDataLoader:
         if include_cosine_prods:
             self.feature_names.extend(
                 [
-                    "cos_k1 * cos_k2",
-                    "cos_r1 * cos_r2",
-                    "cos_n1 * cos_n2",
-                    "(cos_r1 * cos_k2) + (cos_k1 * cos_r2)",
-                    "(cos_r1 * cos_k2) - (cos_k1 * cos_r2)",
-                    "(cos_n1 * cos_r2) + (cos_r1 * cos_n2)",
-                    "(cos_n1 * cos_r2) - (cos_r1 * cos_n2)",
-                    "(cos_n1 * cos_k2) + (cos_k1 * cos_n2)",
-                    "(cos_n1 * cos_k2) - (cos_k1 * cos_n2)",
+                    "cos_k1_x_cos_k2",
+                    "cos_r1_x_cos_r2",
+                    "cos_n1_x_cos_n2",
+                    "cos_r1_x_cos_k2_plus_cos_k1_x_cos_r2",
+                    "cos_r1_x_cos_k2_minus_cos_k1_x_cos_r2",
+                    "cos_n1_x_cos_r2_plus_cos_r1_x_cos_n2",
+                    "cos_n1_x_cos_r2_minus_cos_r1_x_cos_n2",
+                    "cos_n1_x_cos_k2_plus_cos_k1_x_cos_n2",
+                    "cos_n1_x_cos_k2_minus_cos_k1_x_cos_n2",
                 ]
             )
 
@@ -153,6 +161,59 @@ class ClassifierDataLoader:
             X_pt = np.concatenate([pos_pt, neg_pt], axis=0)
             self.X = np.concatenate([self.X, X_pt], axis=1)
             self.feature_names.append("pt")
+        if include_dPhi:
+            pos_dPhi = observables.get_dPhi_ll(
+                p_l_t=pos_recos["p_l_t"],
+                p_l_tbar=pos_recos["p_l_tbar"],
+            )
+            neg_dPhi = observables.get_dPhi_ll(
+                p_l_t=neg_recos["p_l_t"],
+                p_l_tbar=neg_recos["p_l_tbar"],
+            )
+            X_dPhi = np.concatenate([pos_dPhi, neg_dPhi], axis=0)
+            self.X = np.concatenate([self.X, X_dPhi], axis=1)
+            self.feature_names.append("dPhi_ll")
+
+        if include_top_vecs:
+            X_top_vecs, top_feature_names = self._get_vec_features(
+                particle_names=["p_top", "p_tbar"],
+                pos_recos=pos_recos,
+                neg_recos=neg_recos,
+            )
+            self.X = np.concatenate([self.X, X_top_vecs], axis=1)
+            self.feature_names.extend(top_feature_names)
+
+        if include_lepton_vecs:
+            X_lepton_vecs, lepton_feature_names = self._get_vec_features(
+                particle_names=["p_l_t", "p_l_tbar"],
+                pos_recos=pos_recos,
+                neg_recos=neg_recos,
+            )
+            self.X = np.concatenate([self.X, X_lepton_vecs], axis=1)
+            self.feature_names.extend(lepton_feature_names)
+
+        if include_neutrino_vecs:
+            X_neutrino_vecs, neutrino_feature_names = self._get_vec_features(
+                particle_names=["p_nu_t", "p_nu_tbar"],
+                pos_recos=pos_recos,
+                neg_recos=neg_recos,
+            )
+            self.X = np.concatenate([self.X, X_neutrino_vecs], axis=1)
+            self.feature_names.extend(neutrino_feature_names)
+        if include_bjet_vecs:
+            X_bjet_vecs, bjet_feature_names = self._get_vec_features(
+                particle_names=["p_b_t", "p_b_tbar"],
+                pos_recos=pos_recos,
+                neg_recos=neg_recos,
+            )
+            self.X = np.concatenate([self.X, X_bjet_vecs], axis=1)
+            self.feature_names.extend(bjet_feature_names)
+        if include_reco_weights:
+            X_reco_weights = np.concatenate(
+                [pos_recos["weight"], neg_recos["weight"]], axis=0
+            )
+            self.X = np.concatenate([self.X, X_reco_weights], axis=1)
+            self.feature_names.append("reco_weight")
 
         self.y = np.concatenate(
             [np.ones(len(pos_matrix)), np.zeros(len(neg_matrix))]
@@ -161,17 +222,53 @@ class ClassifierDataLoader:
     def load(self):
         return self.X, self.y
 
-
-class NNDataset(Dataset):
-    def __init__(
+    def _get_vec_features(
         self,
-        data_loader: ClassifierDataLoader,
-    ):
-        self.X, self.y = data_loader.load()
-        self.input_features = self.X.shape[1]
+        particle_names: List[str],
+        pos_recos: Dict[str, np.ndarray],
+        neg_recos: Dict[str, np.ndarray],
+    ) -> Tuple[np.ndarray, List[str]]:
+        pos_vecs_xyz = np.concatenate(
+            [pos_recos[particle_name] for particle_name in particle_names],
+            axis=1,
+        )
+        neg_vecs_xyz = np.concatenate(
+            [neg_recos[particle_name] for particle_name in particle_names],
+            axis=1,
+        )
+        pos_vecs_polar = np.concatenate(
+            [
+                self._get_polar_vecs(pos_recos[particle_name])
+                for particle_name in particle_names
+            ],
+            axis=1,
+        )
+        neg_vecs_polar = np.concatenate(
+            [
+                self._get_polar_vecs(neg_recos[particle_name])
+                for particle_name in particle_names
+            ],
+            axis=1,
+        )
+        X_vecs_xyz = np.concatenate([pos_vecs_xyz, neg_vecs_xyz], axis=0)
+        X_vecs_polar = np.concatenate([pos_vecs_polar, neg_vecs_polar], axis=0)
+        X_vecs = np.concatenate([X_vecs_xyz, X_vecs_polar], axis=1)
+        feature_names_xyz = [
+            f"{particle_name}_{component}"
+            for particle_name in particle_names
+            for component in ["px", "py", "pz", "E"]
+        ]
+        feature_names_polar = [
+            f"{particle_name}_{component}"
+            for particle_name in particle_names
+            for component in ["pt", "eta", "phi", "mass"]
+        ]
+        feature_names = feature_names_xyz + feature_names_polar
+        return X_vecs, feature_names
 
-    def __len__(self) -> int:
-        return len(self.X)
-
-    def __getitem__(self, index: int):
-        return self.X[index].astype(np.float32), self.y[index].astype(np.int64)
+    def _get_polar_vecs(self, X_four_vecs: np.ndarray) -> np.ndarray:
+        pt = kinematics.get_pt(X_four_vecs)
+        eta = kinematics.eta(X_four_vecs)
+        phi = kinematics.phi(X_four_vecs)
+        mass = kinematics.mass(X_four_vecs)[:, 0]
+        return np.stack([pt, eta, phi, mass], axis=1)
