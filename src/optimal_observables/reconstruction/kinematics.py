@@ -5,8 +5,9 @@ import numpy as np
 from optimal_observables.reconstruction import event_selection
 
 
-def four_momentum(pt: np.ndarray, phi: np.ndarray, eta: np.ndarray,
-                  mass: np.ndarray) -> np.ndarray:
+def four_momentum(
+    pt: np.ndarray, phi: np.ndarray, eta: np.ndarray, mass: np.ndarray
+) -> np.ndarray:
     """Set four momentum from pt, phi, eta and mass.
 
     :param pt: Transverse momentum.
@@ -42,7 +43,7 @@ def neutrino_four_momentum(px: float, py: float, eta: float) -> np.ndarray:
     """
     pt = np.sqrt(px**2 + py**2)
     pz = pt * np.sinh(eta)
-    E = np.sqrt(pt ** 2 + pz ** 2)
+    E = np.sqrt(pt**2 + pz**2)
     return np.array([px, py, pz, E])
 
 
@@ -57,7 +58,7 @@ def normalize_dPhi(dphi: np.ndarray) -> np.ndarray:
     mask1 = dphi < -np.pi
     mask2 = dphi >= np.pi
     normed_dphi = dphi
-    normed_dphi[mask1] += (2 * np.pi)
+    normed_dphi[mask1] += 2 * np.pi
     normed_dphi[mask2] = (2 * np.pi) - normed_dphi[mask2]
     return np.abs(normed_dphi)
 
@@ -72,6 +73,10 @@ def eta(p: np.ndarray) -> np.ndarray:
     return eta_result
 
 
+def get_pt(p: np.ndarray) -> np.ndarray:
+    return np.linalg.norm(p[:, :2], axis=1)
+
+
 def phi(p: np.ndarray) -> np.ndarray:
     p_x = p[:, 0]
     p_y = p[:, 1]
@@ -81,14 +86,14 @@ def phi(p: np.ndarray) -> np.ndarray:
 def mass(p: np.ndarray) -> np.ndarray:
     x2 = np.sum(p[:, :3] ** 2, axis=1, keepdims=True)
     m2 = p[:, 3:] - x2
-    m2 *= ((np.sign(m2) < 0) * -1)
+    m2 *= (np.sign(m2) < 0) * -1
     return np.sqrt(m2)
 
 
 def dR(p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
     dEta = eta(p1) - eta(p2)
     dPhi = normalize_dPhi(phi(p1) - phi(p2))
-    return np.sqrt((dPhi ** 2) + (dEta ** 2))
+    return np.sqrt((dPhi**2) + (dEta**2))
 
 
 def dphi_dilepton(events) -> List[np.ndarray]:
@@ -112,7 +117,9 @@ def dphi_dilepton(events) -> List[np.ndarray]:
     for idx, (phi, charge) in enumerate(zip(elec_phi, elec_charge)):
         if len(phi) == 0:
             if len(muon_charge[idx]) == 2:
-                dphi_vals.append(normalize_dPhi(np.array(muon_phi[idx][0] - muon_phi[idx][1])))
+                dphi_vals.append(
+                    normalize_dPhi(np.array(muon_phi[idx][0] - muon_phi[idx][1]))
+                )
             else:
                 continue
         elif len(phi) == 1:
@@ -139,7 +146,10 @@ def invariant_mass_ttbar(events) -> np.ndarray:
     status_mask = events["Particle.Status"].array() == 22
     t_mask = (events["Particle.PID"].array() == 6) * status_mask
     tbar_mask = (events["Particle.PID"].array() == -6) * status_mask
-    mass = events["Particle.Mass"].array()[t_mask] + events["Particle.Mass"].array()[tbar_mask]
+    mass = (
+        events["Particle.Mass"].array()[t_mask]
+        + events["Particle.Mass"].array()[tbar_mask]
+    )
     mass_vals = mass.flatten()
     return mass_vals
 
@@ -155,6 +165,8 @@ def pt_ttbar(events) -> np.ndarray:
     status_mask = events["Particle.Status"].array() == 22
     t_mask = (events["Particle.PID"].array() == 6) * status_mask
     tbar_mask = (events["Particle.PID"].array() == -6) * status_mask
-    pT = events["Particle.PT"].array()[t_mask] + events["Particle.PT"].array()[tbar_mask]
+    pT = (
+        events["Particle.PT"].array()[t_mask] + events["Particle.PT"].array()[tbar_mask]
+    )
     pT_vals = pT.flatten()
     return pT_vals
