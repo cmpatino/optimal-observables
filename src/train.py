@@ -6,12 +6,16 @@ import mlflow
 import optuna
 import lightgbm as lgb
 import xgboost as xgb
-from optimal_observables.optimization.data import ClassifierDataLoader
+from optimal_observables.optimization.data import (
+    ClassifierDataLoader,
+    BenchmarkDataLoader,
+)
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import MinMaxScaler
 
 
 def get_params_trial(trial, model_type):
@@ -44,6 +48,8 @@ def get_init_model(model_type, params, random_state):
         model = xgb.XGBClassifier(**params, random_state=random_state)
     elif model_type == "rf":
         model = RandomForestClassifier(**params, random_state=random_state, n_jobs=-1)
+    elif model_type == "lr":
+        model = LogisticRegression()
     else:
         raise ValueError(f"Model type {model_type} not supported.")
     return model
@@ -74,23 +80,32 @@ if __name__ == "__main__":
     include_cosine_prods = config["include_cosine_prods"]
     include_pt = config["include_pt"]
     n_hparam_trials = config["n_hparam_trials"]
+    tags = config["tags"]
 
     pos_reco_paths = [
-        os.path.join(base_path, path)
-        for path in os.listdir(base_path)
-        if pos_process in path
+        os.path.join(base_path, pos_process, path)
+        for path in os.listdir(os.path.join(base_path, pos_process))
+        if os.path.isdir(os.path.join(base_path, pos_process, path))
     ]
     neg_reco_paths = [
-        os.path.join(base_path, path)
-        for path in os.listdir(base_path)
-        if neg_process in path
+        os.path.join(base_path, neg_process, path)
+        for path in os.listdir(os.path.join(base_path, neg_process))
+        if os.path.isdir(os.path.join(base_path, neg_process, path))
     ]
+
+    benchmark_loader = BenchmarkDataLoader(
+        pos_reconstruction_paths=pos_reco_paths, neg_reconstruction_paths=neg_reco_paths
+    )
+    y_bench, y_bench_true = benchmark_loader.load()
+    benchmark_roc_auc = roc_auc_score(y_bench_true, y_bench)
 
     data_loader = ClassifierDataLoader(
         pos_reconstruction_paths=pos_reco_paths,
         neg_reconstruction_paths=neg_reco_paths,
         include_cosine_prods=include_cosine_prods,
         include_mtt=include_mtt,
+        include_pt=include_pt,
+        include_dPhi=True,
     )
     X, y = data_loader.load()
     y = y.reshape(-1)
@@ -103,12 +118,12 @@ if __name__ == "__main__":
     )
 
     # Create numeric preprocessing pipeline
-    data_processer = Pipeline([("standard_scaler", StandardScaler())])
+    data_processer = Pipeline([("scaler", MinMaxScaler())])
     X_train = data_processer.fit_transform(X_train)
     X_val = data_processer.transform(X_val)
     X_test = data_processer.transform(X_test)
 
-    if model_hparams is None:
+    if (model_hparams is None) and model_type != "lr":
         sampler = optuna.samplers.TPESampler(seed=random_seed)
         study = optuna.create_study(direction="maximize", sampler=sampler)
         study.optimize(
@@ -129,16 +144,20 @@ if __name__ == "__main__":
         mlflow.lightgbm.autolog()
     elif model_type == "xgboost":
         mlflow.xgboost.autolog()
-    elif model_type == "rf":
+    elif (model_type == "rf") or (model_type == "lr"):
         mlflow.sklearn.autolog()
     else:
         raise ValueError(f"Unknown model type: {model_type}")
 
     with mlflow.start_run() as run:
+        mlflow.set_tags(tags)
         model = get_init_model(
             model_type=model_type, params=model_hparams, random_state=random_seed
         )
-        model.fit(X_train, y_train, feature_name=data_loader.feature_names)
+        if model_type == "lr":
+            model.fit(X_train, y_train)
+        else:
+            model.fit(X_train, y_train, feature_name=data_loader.feature_names)
 
         y_pred_train = model.predict_proba(X_train)
         y_pred_val = model.predict_proba(X_val)
@@ -155,6 +174,7 @@ if __name__ == "__main__":
         mlflow.log_metric("train_roc-auc", auc_score_train)
         mlflow.log_metric("val_roc-auc", auc_score_val)
         mlflow.log_metric("test_roc-auc", auc_score_test)
+        mlflow.log_metric("benchmark_roc-auc", benchmark_roc_auc)
         mlflow.log_params(config)
 
         os.remove("data_preprocesser.pkl")
